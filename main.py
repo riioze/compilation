@@ -1,10 +1,10 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, List
 
 
 
 
 class Token :
-    def __init__(self, token_type: str, token_pos: Tuple[int,int], token_value : Optional[int] = None, token_string : Optional[str] = None):
+    def __init__(self, token_type: str, token_pos : Tuple[int,int], token_value : Optional[int] = None, token_string : Optional[str] = None):
         self.token_type = token_type
         self.token_pos = token_pos
         self.token_value = token_value
@@ -21,7 +21,14 @@ class Token :
         return string
 
 
-
+class Node:
+     
+    def __init__(self, node_type:str,node_pos: Tuple[int,int], node_value : Optional[int] = None, node_string: Optional[str] = None, children: List['Node'] = []):
+        self.node_type = node_type
+        self.node_pos = node_pos
+        self.node_value = node_value
+        self.node_string = node_string
+        self.children = children
 
 
 class Lexer:
@@ -105,7 +112,7 @@ class Lexer:
                 self.pointer_pos+=1
                 
             
-            self.current_token = Token("tok_number",(self.current_line,self.current_col),token_value=int(current_number))
+            self.current_token = Token("tok_const",(self.current_line,self.current_col),token_value=int(current_number))
             return
 
         if self.is_letter(self.text[self.pointer_pos]):
@@ -147,7 +154,7 @@ class Lexer:
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '|':
                     self.current_token = Token("tok_||",(self.current_line,self.current_col))
                 else:
-                    throw_error(f"Token | unkown at pos (line = {self.current_line} col = {self.current_col}) did you mean \"||\" ?")
+                    raise ValueError(f"Token | unkown at pos (line = {self.current_line} col = {self.current_col}) did you mean \"||\" ?")
             
             case '!':
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '=':
@@ -198,29 +205,129 @@ class Lexer:
                 self.current_token = Token("tok_,",(self.current_line,self.current_col))
 
             case other:
-                throw_error(f"Token {other} unkown at pos (line = {self.current_line} col = {self.current_col})")
+                raise ValueError(f"Token {other} unkown at pos (line = {self.current_line} col = {self.current_col})")
+
+        self.pointer_pos += 1
+
+
+    def accept(self,token_type:str):
+        if not self.check(token_type):
+            line, col = self.current_token.token_pos
+            raise ValueError(f"wrong token at pos ({line = } {col = }) expected a token of type {token_type}")
+
+    def check(self,token_type:str):
+        if self.current_token.token_type == token_type:
+            self.next_token()
+            return True
+        return False
                 
+class Parser:
+
+    def __init__(self,lexer:Lexer):
+        self.lexer = lexer
+        
+    
+    def next_tree(self):
+        return self.get_expression()
+    
+    def get_expression(self) -> Node:
+        return self.get_prefix()
+
+    def get_suffix(self) -> Node:
+        return self.get_atom()
+
+    def get_prefix(self) -> Node:
+        if self.lexer.check("tok_!"):
+            token_not = self.lexer.last_token
+            intern_prefix = self.get_prefix()
+            node_not = Node("nd_not",node_pos=token_not.token_pos,children=[intern_prefix])
+            return node_not
+        
+        elif self.lexer.check("tok_-"):
+            token_neg = self.lexer.last_token
+            intern_prefix = self.get_prefix()
+            node_neg = Node("nd_neg",node_pos=token_neg.token_pos,children=[intern_prefix])
+            return node_neg
+        
+        elif self.lexer.check("tok_+"):
+            return self.get_prefix()
+        
+        else:
+            return self.get_suffix()
+
+    def get_atom(self) -> Node:
+        if self.lexer.check("tok_const"):
+            token = self.lexer.last_token
+            return Node("nd_const",node_pos=token.token_pos,node_value=token.token_value)
+
+        elif self.lexer.check("tok_("):
+            expression = self.get_expression()
+            self.lexer.accept("tok_)")
+            return expression
+        
+        else:
+            raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const of expression")
+
+    
+
+class Optimizer:
+    def __init__(self,parser:Parser):
+        self.parser = parser
+    
+    def next_tree(self):
+        return self.parser.next_tree()
+
+def gencode(optimizer:Optimizer,file):
+    tree = optimizer.next_tree()
+    gennode(tree,file)
+
+def gennode(node:Node,file):
+    
+    match node.node_type:
+        case "nd_const":
+            print(f"push {node.node_value}",file=file)
+
+        case "nd_not":
+            assert len(node.children) == 1, f"node nd_not at pos {node.node_pos} has not the required number of children (1)"
+            gennode(node.children[0],file)
+            print("not",file=file)
+        
+        case "nd_neg":
+           assert len(node.children) == 1, f"node nd_not at pos {node.node_pos} has not the required number of children (1)"
+           print("push 0",file=file)
+           gennode(node.children[0],file)
+           print("sub", file=file)
+        
+        case other:
+            raise ValueError(f"node_type {other} at pos {node.node_pos} unknown")
+
+
 
         
+def main():
+    with open("code.c", 'r') as f:
+        code = f.read()
+    
+    lexer = Lexer(code)
+    lexer.next_token()
+    parser = Parser(lexer)
+    optimizer = Optimizer(parser)
+
+    with open("msm/prg.asm",'w') as file:
+
         
 
-lexer = Lexer("^")
+        print(".start",file=file)
 
-def throw_error(message:str):
-    print(message)
-    quit(1)
+        while(lexer.current_token.token_type != "tok_eof"):
+            gencode(optimizer,file=file)
 
-def accept(token_type:str):
-    if not check(token_type):
-        line, col = lexer.current_token.token_pos
-        throw_error(f"wrong token at pos ({line = } {col = }) expected a token of type {token_type}")
+        print("dbg",file=file)
+        print("halt",file=file)
 
-def check(token_type:str):
-    if lexer.current_token.token_type == token_type:
-        lexer.next_token()
-        return True
-    return False
 
-lexer.next_token()
 
-print(lexer.current_token)
+
+
+if __name__ == "__main__":
+    main()
