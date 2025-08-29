@@ -3,14 +3,31 @@ from typing import Optional, Tuple, List
 
 
 
-class Token :
-    def __init__(self, token_type: str, token_pos : Tuple[int,int], token_value : Optional[int] = None, token_string : Optional[str] = None):
-        self.token_type = token_type
-        self.token_pos = token_pos
-        self.token_value = token_value
-        self.token_string = token_string
-    
+class Token:
+    def __init__(self, t_type:str, t_value:Optional[int]=None, t_string:Optional[str]=None, t_pos:Tuple[int,int]=None):
+        """ 
+        Classe représentant les objets Token utilisés par la suite
+
+        @params
+        Entrée : t_type,    type String, le type du token
+                 t_value,   type Int,    la valeur du token lorsqu'il représente une constante numérique (optionnel)
+                 t_string,  type String, la valeur du token lorsqu'il représente une contante alphabétique ou une variable (optionnel)
+                 t_pos,     type Tuple(ligne:int, colonne:int), la position du token dans le code
+        Sortie : None
+        """
+        self.token_type = t_type
+        self.token_value = t_value
+        self.token_string = t_string
+        self.token_pos = t_pos
+
     def __str__(self):
+        """
+        Méthode d'affichage de l'object
+
+        @params:
+        Entrée : None
+        Sortie :None
+        """
         string = self.token_type + f" at ({self.token_pos})"
 
         if self.token_value:
@@ -24,6 +41,16 @@ class Token :
 class Node:
      
     def __init__(self, node_type:str,node_pos: Tuple[int,int], node_value : Optional[int] = None, node_string: Optional[str] = None, children: List['Node'] = []):
+        """ 
+        Classe représentant les objets Noeud (Node) pour la construction d'arbre dans le but de gérer le code dans le bon ordre
+
+        @params
+        Entrée : node_type,     type String, type du noeud
+                 node_pos,      type Tuple(ligne:int, colonne:int), position du noeud dans le code
+                 node_value,    type Int, valeur du noeud quand c'est une constante numérique (optionnel)
+                 node_string,   type String, valeur du noeud quand c'est une constante alphabétique (optionnel)
+                 children,      type List(Node,Node...), liste des enfants du noeud
+        """
         self.node_type = node_type
         self.node_pos = node_pos
         self.node_value = node_value
@@ -344,48 +371,124 @@ class Lexer:
 class Parser:
 
     def __init__(self,lexer:Lexer):
+        """ 
+        Classe récupérant les tokens un par un et les transforme en noeud pour créer l'arbre représentant le code
+
+        @params:
+        Entrée : lexer, type Lexer, objet d'analyse du code pour la transformation en token
+        Sortie : None
+        """
         self.lexer = lexer
         
     
     def next_tree(self):
+        """ 
+        Méthode renvoyant un noeud représentant la prochaine expression
+
+        @params:
+        Entrée : None
+        Sortie : Node
+        """
         return self.get_expression()
     
     def get_expression(self) -> Node:
+        """ 
+        Méthode renvoyant un noeud représentant une expression complète
+
+        @params:
+        Entrée : None
+        Sortie : Node
+        """
         return self.get_prefix()
 
     def get_suffix(self) -> Node:
+        """ 
+        Méthode renvoyant un noeud opérateur suffixe (appel de fonction, indexation) avec comme enfant le reste de l'expression
+
+        @params
+        Entrée : None
+        Sortie : Node
+        """
+
         return self.get_atom()
 
     def get_prefix(self) -> Node:
+        """ 
+        Méthode renvoyant un noeud opérateur préfixe (!, -, +, *, &) avec comme enfant le reste de l'expression
+
+        @params
+        Entrée : None
+        Sortie : Node
+        """
+
+        # Parcours en fonction du préfixe
         if self.lexer.check("tok_!"):
+
+            # Récupération du dernier token rencontré ( tok_! )
             token_not = self.lexer.last_token
+            
+            # Récupération du reste de l'expression en se rappelant elle-même
             intern_prefix = self.get_prefix()
+
+            # Création d'un noeud correspondant au token
             node_not = Node("nd_not",node_pos=token_not.token_pos,children=[intern_prefix])
+
+            # Renvoi du noeud
             return node_not
         
         elif self.lexer.check("tok_-"):
+
+            # Récupération du dernier token rencontré ( tok_- )
             token_neg = self.lexer.last_token
+
+            # Récupération du reste de l'expression en se rappelant elle-même
             intern_prefix = self.get_prefix()
+
+            # Création d'un noeud correspondant au token
             node_neg = Node("nd_neg",node_pos=token_neg.token_pos,children=[intern_prefix])
+
+            # Renvoi du noeud
             return node_neg
         
         elif self.lexer.check("tok_+"):
+            # Préfix + inutile (comme dans "+5", suppression du "+" inutile)
             return self.get_prefix()
         
         else:
+            # Lorsqu'on rencontre quelque chose de différent des préfixes définis, renvoi en tant que suffixe
             return self.get_suffix()
 
     def get_atom(self) -> Node:
+        """ 
+        Méthode renvoyant un noeud atome (constante numérique ou une expression entre parenthèse) 
+
+        @params
+        Entrée : None
+        Sortie : Node
+        """
+
+        # Parcours en fonction du token rencontré
         if self.lexer.check("tok_const"):
+
+            # Récupération du dernier token ( tok_const )
             token = self.lexer.last_token
+
+            # Renvoi du noeud correspondant au token
             return Node("nd_const",node_pos=token.token_pos,node_value=token.token_value)
 
         elif self.lexer.check("tok_("):
+
+            # Récupération de l'expression parenthésée
             expression = self.get_expression()
+
+            # Vérification de la fermeture de l'expression par une parenthèse fermante
             self.lexer.accept("tok_)")
+
+            # Renvoi de l'expression
             return expression
         
         else:
+            # Token non accepté dans la grammaire régissant ce modèle atome, renvoi d'une erreur
             raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const of expression")
 
     
