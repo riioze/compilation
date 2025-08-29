@@ -90,7 +90,7 @@ class Lexer:
 
         @params
         Entrée : None
-        Sortie : None
+        Sortie : Token, le token eof
         """
         return Token("tok_eof",(self.current_line,self.current_col))
     
@@ -158,6 +158,8 @@ class Lexer:
         # Gestion des espaces et retour à la ligne
         # ---
 
+        # TODO: ajouter la gestion des commentaires
+
         while (self.text[self.pointer_pos] in self.spacing_chars): # skipping spaces
             
             # Augmentation de l'indice à regarder
@@ -167,7 +169,7 @@ class Lexer:
             if self.test_eof():
                 self.current_token = self.eof_tok()
 
-                # Le parcourt ne renvoie rien car pas de token utilisable après les espaces
+                # Une fois le token eof créé, on sort de la fonction
                 return
 
             # Mise à jour de la position du curseur
@@ -204,7 +206,7 @@ class Lexer:
             current_word = ''
 
             # Tant que le pointeur n'est pas à la fin du code et qu'il rencontre des caratères
-            while not self.test_eof() and self.is_alpha_num(self.text[self.pointer_pos]):
+            while not self.test_eof() and self.is_alpha_num(self.text[self.pointer_pos]): # ici on utilise is_alpha_num car un identifiant ne peut pas commencer par une lettre mais il peut en avoir ensuite
                 # Ajout de la lettre ou du chiffre au mot
                 current_word += self.text[self.pointer_pos]
 
@@ -306,7 +308,7 @@ class Lexer:
             case ',':
                 self.current_token = Token("tok_,",(self.current_line,self.current_col))
 
-            case other:
+            case other: # si token inconnue, on envoie une erreur
                 raise ValueError(f"Token {other} unkown at pos (line = {self.current_line} col = {self.current_col})")
         self.pointer_pos+=1
     
