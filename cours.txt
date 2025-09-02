@@ -1,0 +1,26 @@
+prios = {
+    6 : * / %
+    5 : + -
+    4 : == != < <= > >=
+    3 : &&
+    2 : ||
+    1 : =
+}
+
+struct token_rules{
+    token;
+    int prio;
+    int pmin;
+}
+
+E(int prio) {
+    N = A(); # première partie de l'expression
+    si est_opbinaire(T.Type){
+        si (tbl[op].prio < prio) return N;
+        next();
+        M = E(tbl[op].pmin); # suite 
+        R = node2(op, N, M);
+        return R;
+    }
+    return N;
+}
