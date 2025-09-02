@@ -7,20 +7,36 @@ prios = {
     1 : =
 }
 
-struct token_rules{
-    token;
-    int prio;
-    int pmin;
+OP_BIN = {
+    "tok_plus" : {pmin : 5, parg : 6, node : "nd_add"}
+    "tok_egal" : {pmin : 1, parg : 1, node : "nd_affect"}
 }
 
-E(int prio) {
-    N = A(); # première partie de l'expression
-    si est_opbinaire(T.Type){
-        si (tbl[op].prio < prio) return N;
+Node *E(int prio = 0) {
+    N = P(); # première partie de l'expression
+    while (OP_BIN[T.Type] != NULL) and  (OP[T.Type].prio >= prio) { # Test si c'est op binaire qui respecte la priorité
+        op = T.type;
         next();
-        M = E(tbl[op].pmin); # suite 
-        R = node2(op, N, M);
-        return R;
+        M = E(tbl[op].parg); # suite : aller manger ce qui est de priorité supérieur a l'op courant
+        N = node2(op, N, M);
     }
     return N;
+}
+
+
+#gen_node () {
+
+
+    switch type
+        case nd_add:
+            gen_node(N->enfants[0]);
+            gen_node(N->enfants[1]);
+            print("add");
+        case nd_mul:
+            gen_node(N->enfants[0]);
+            gen_node(N->enfants[1]);
+            print("mul");
+
+
+
 }

@@ -1,7 +1,25 @@
 from typing import Optional, Tuple, List
 
 
+OP = {
+    "tok_=" : { "prio" : 1, "parg" : 1, "node_type" : "nd_affect"},
+    "tok_||" : { "prio" : 2, "parg" : 3, "node_type" : "nd_or"},
+    "tok_&&" : { "prio" : 3, "parg" : 4, "node_type" : "nd_and"},
+    "tok_==" : { "prio" : 4, "parg" : 5, "node_type" : "nd_iseq"},
+    "tok_!=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isnoteq"},
+    "tok_<=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isinfeq"},
+    "tok_>=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_issupeq"},
+    "tok_<" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isinf"},
+    "tok_>" : { "prio" : 4, "parg" : 5, "node_type" : "nd_issup"},
+    "tok_+" : { "prio" : 5, "parg" : 6, "node_type" : "nd_plus"},
+    "tok_-" : { "prio" : 5, "parg" : 6, "node_type" : "nd_minus"},
+    "tok_*" : { "prio" : 6, "parg" : 7, "node_type" : "nd_mult"},
+    "tok_/" : { "prio" : 6, "parg" : 7, "node_type" : "nd_div"},
+    "tok_%" : { "prio" : 6, "parg" : 7, "node_type" : "nd_mod"},
+}
 
+def check_op_prio(token_type : str,prio : int) -> bool:
+    return token_type in OP.keys() and OP[token_type]["prio"] >= prio
 
 class Token:
     def __init__(self, t_type:str, t_value:Optional[int]=None, t_string:Optional[str]=None, t_pos:Tuple[int,int]=None):
@@ -390,8 +408,20 @@ class Parser:
         Sortie : Node
         """
         return self.get_expression()
-    
-    def get_expression(self) -> Node:
+
+
+# Node *E(int prio = 0) {
+#     N = P(); # première partie de l'expression
+#     while (OP_BIN[T.Type] != NULL) and  (OP[T.Type].prio >= prio) { # Test si c'est op binaire qui respecte la priorité
+#         op = T.type;
+#         next();
+#         M = E(tbl[op].parg); # suite : aller manger ce qui est de priorité supérieur a l'op courant
+#         N = node2(op, N, M);
+#     }
+#     return N;
+# }
+
+    def get_expression(self, prio: int = 0) -> Node:
         """ 
         Méthode renvoyant un noeud représentant une expression complète
 
@@ -399,7 +429,14 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
-        return self.get_prefix()
+        first_part = self.get_prefix()
+
+        while check_op_prio(self.lexer.current_token.token_type, prio):
+            op_token = self.lexer.current_token
+            self.lexer.next_token()
+            second_part = self.get_expression(OP[op_token.token_type]["parg"])
+            first_part = Node(OP[op_token.token_type]["node_type"],node_pos=op_token.token_pos,children=[first_part,second_part])
+        return first_part
 
     def get_suffix(self) -> Node:
         """ 
