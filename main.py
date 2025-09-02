@@ -18,11 +18,32 @@ OP = {
     "tok_%" : { "prio" : 6, "parg" : 7, "node_type" : "nd_mod"},
 }
 
+NF = {
+    # Operateurs binaires
+    "nd_or" : {"prefix" : "","suffix" : "or"},
+    "nd_and" : {"prefix" : "","suffix" : "and"},
+    "nd_iseq" : {"prefix" : "","suffix" : "cmpeq"},
+    "nd_isnoteq" : {"prefix" : "","suffix" : "cmpne"},
+    "nd_isinfeq" : {"prefix" : "","suffix" : "cmple"},
+    "nd_issupeq" : {"prefix" : "","suffix" : "cmpge"},
+    "nd_isinf" : {"prefix" : "","suffix" : "cmplt"},
+    "nd_issup" : {"prefix" : "","suffix" : "cmpgt"},
+    "nd_plus" : {"prefix" : "","suffix" : "add"},
+    "nd_minus" : {"prefix" : "","suffix" : "sub"},
+    "nd_mult" : {"prefix" : "","suffix" : "mul"},
+    "nd_div" : {"prefix" : "","suffix" : "div"},
+    "nd_mod" : {"prefix" : "","suffix" : "mod"},
+
+    # Operateurs unaires
+    "nd_not" : {"prefix" : "", "suffix" : "not"},
+    "nd_neg" : {"prefix" : "push 0", "suffix" : "sub"},
+}
+
 def check_op_prio(token_type : str,prio : int) -> bool:
     return token_type in OP.keys() and OP[token_type]["prio"] >= prio
 
 class Token:
-    def __init__(self, t_type:str, t_value:Optional[int]=None, t_string:Optional[str]=None, t_pos:Tuple[int,int]=None):
+    def __init__(self, token_type:str, token_pos:Tuple[int,int], token_value:Optional[int]=None, token_string:Optional[str]=None):
         """ 
         Classe représentant les objets Token utilisés par la suite
 
@@ -33,10 +54,10 @@ class Token:
                  t_pos,     type Tuple(ligne:int, colonne:int), la position du token dans le code
         Sortie : None
         """
-        self.token_type = t_type
-        self.token_value = t_value
-        self.token_string = t_string
-        self.token_pos = t_pos
+        self.token_type = token_type
+        self.token_value = token_value
+        self.token_string = token_string
+        self.token_pos = token_pos
 
     def __str__(self):
         """
@@ -291,6 +312,8 @@ class Lexer:
                 # Distinction entre '&' et '&&'
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '&':
                     self.current_token = Token("tok_&&",(self.current_line,self.current_col))
+                    self.pointer_pos+=1
+                    self.current_col+=1
                 else:
                     self.current_token = Token("tok_&",(self.current_line,self.current_col))
             
@@ -298,6 +321,8 @@ class Lexer:
                 # Le token '|' n'existe pas, vérification de la présence de '||'
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '|':
                     self.current_token = Token("tok_||",(self.current_line,self.current_col))
+                    self.pointer_pos+=1
+                    self.current_col+=1
                 else:
                     raise ValueError(f"Token | unkown at pos (line = {self.current_line} col = {self.current_col}) did you mean \"||\" ?")
             
@@ -305,6 +330,8 @@ class Lexer:
                 # Distinction entre '!' et '!='
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '=':
                     self.current_token = Token("tok_!=",(self.current_line,self.current_col))
+                    self.pointer_pos+=1
+                    self.current_col+=1
                 else:
                     self.current_token = Token("tok_!",(self.current_line,self.current_col))
             
@@ -312,6 +339,8 @@ class Lexer:
                 # Distinction entre '=' et '=='
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '=':
                     self.current_token = Token("tok_==",(self.current_line,self.current_col))
+                    self.pointer_pos+=1
+                    self.current_col+=1
                 else:
                     self.current_token = Token("tok_=",(self.current_line,self.current_col))
 
@@ -319,6 +348,8 @@ class Lexer:
                 # Distinction entre '<' et '<='
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '=':
                     self.current_token = Token("tok_<=",(self.current_line,self.current_col))
+                    self.pointer_pos+=1
+                    self.current_col+=1
                 else:
                     self.current_token = Token("tok_<",(self.current_line,self.current_col))
 
@@ -326,6 +357,8 @@ class Lexer:
                 # Distinction entre '>' et '>='
                 if self.pointer_pos + 1 < len(self.text) and self.text[self.pointer_pos+1] == '=':
                     self.current_token = Token("tok_>=",(self.current_line,self.current_col))
+                    self.pointer_pos+=1
+                    self.current_col+=1
                 else:
                     self.current_token = Token("tok_<",(self.current_line,self.current_col))
 
@@ -409,17 +442,6 @@ class Parser:
         """
         return self.get_expression()
 
-
-# Node *E(int prio = 0) {
-#     N = P(); # première partie de l'expression
-#     while (OP_BIN[T.Type] != NULL) and  (OP[T.Type].prio >= prio) { # Test si c'est op binaire qui respecte la priorité
-#         op = T.type;
-#         next();
-#         M = E(tbl[op].parg); # suite : aller manger ce qui est de priorité supérieur a l'op courant
-#         N = node2(op, N, M);
-#     }
-#     return N;
-# }
 
     def get_expression(self, prio: int = 0) -> Node:
         """ 
@@ -525,8 +547,9 @@ class Parser:
             return expression
         
         else:
+            print(self.lexer.current_token)
             # Token non accepté dans la grammaire régissant ce modèle atome, renvoi d'une erreur
-            raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const of expression")
+            raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const or expression")
 
     
 
@@ -542,21 +565,19 @@ def gencode(optimizer:Optimizer,file):
     gennode(tree,file)
 
 def gennode(node:Node,file):
-    
+
+    node_type = node.node_type
+    if node_type in NF:
+        prefix = NF[node_type]["prefix"]
+        if prefix: print(prefix, file=file)
+        for child in node.children:
+            gennode(child,file=file)
+        print(NF[node_type]["suffix"],file=file)
+        return
+
     match node.node_type:
         case "nd_const":
             print(f"push {node.node_value}",file=file)
-
-        case "nd_not":
-            assert len(node.children) == 1, f"node nd_not at pos {node.node_pos} has not the required number of children (1)"
-            gennode(node.children[0],file)
-            print("not",file=file)
-        
-        case "nd_neg":
-           assert len(node.children) == 1, f"node nd_not at pos {node.node_pos} has not the required number of children (1)"
-           print("push 0",file=file)
-           gennode(node.children[0],file)
-           print("sub", file=file)
         
         case other:
             raise ValueError(f"node_type {other} at pos {node.node_pos} unknown")
