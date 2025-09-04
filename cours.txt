@@ -37,6 +37,43 @@ Node *E(int prio = 0) {
             gen_node(N->enfants[1]);
             print("mul");
 
-
-
 }
+
+I <- E;
+  | { I* }
+  | debug E;
+
+Node *I(){
+    if (check(tok_debug)) {
+        N=E();
+        accept(tok_;);
+        return Node(nd_debug, N);
+    } else if (check("tok_{")){
+        Node block = Node()
+        while (!check("tok_}")) {
+            ajoute_enfant(block,I())
+        }
+        return N;
+    }
+    else {
+        N = E();
+        accept(tok_;)
+        return Node(nd_drop,N)
+    }
+}
+
+# Table des symboles
+
+void begin() -> { push(new table)
+void end() -> } drop()
+sym declare(string name) -> int a; 
+sym find(string name) -> a = 5;
+
+
+find : 
+    for (i=top i>= 0 i++){
+        if T[i].name == name
+        return T[i]
+    }
+    erreur fatale
+

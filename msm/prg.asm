@@ -1,16 +1,9 @@
 .start
-push 1
-push 1
-and
-push 19
+push 4
+push 5
 add
-push 8
-push 1
-push 12
-push 6
-div
-sub
-cmpeq
-or
 dbg
+push 5
+drop 1
+
 halt

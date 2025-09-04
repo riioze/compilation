@@ -37,6 +37,11 @@ NF = {
     # Operateurs unaires
     "nd_not" : {"prefix" : "", "suffix" : "not"},
     "nd_neg" : {"prefix" : "push 0", "suffix" : "sub"},
+
+    # Instructions
+    "nd_debug" : {"prefix" : "", "suffix" : "dbg"},
+    "nd_drop" : {"prefix" : "", "suffix" : "drop 1"},
+    "nd_block" : {"prefix" : "", "suffix" : ""},
 }
 
 def check_op_prio(token_type : str,prio : int) -> bool:
@@ -96,6 +101,9 @@ class Node:
         self.node_string = node_string
         self.children = children
 
+class Symbol:
+    def __init__(self, name:str):
+        self.name = name
 
 class Lexer:
     def __init__(self, text:str):
@@ -430,6 +438,9 @@ class Parser:
         Sortie : None
         """
         self.lexer = lexer
+
+        self.sym_table : List[Symbol] = []
+        self.sym_indices_table : List[int] = []
         
     
     def next_tree(self):
@@ -440,7 +451,59 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
-        return self.get_expression()
+        return self.get_instruction()
+    
+    def begin(self):
+        if self.sym_indices_table == []:
+            self.sym_indices_table.append(0)
+        else:
+            self.sym_indices_table.append(self.sym_indices_table[-1])
+    
+    def end(self):
+        new_end = self.sym_indices_table.pop()
+        self.sym_table = self.sym_table[:new_end]
+    
+    def declare(self,name:str):
+        if len(self.sym_indices_table) == 0:
+            raise ValueError(f"Not in a scope at pos{self.lexer.current_token.token_pos}")
+        elif len(self.sym_indices_table) == 1:
+            bottom = 0
+            top = self.sym_indices_table[0]
+        else:
+            bottom = self.sym_indices_table[-2]
+            top = self.sym_indices_table[-1]
+        
+        for i in range(bottom,top):
+            if self.sym_table[i].name == name:
+                raise ValueError(f"Name {name} at pos {self.lexer.current_token.token_pos} already declared in current scope")
+        
+        new_symbol = Symbol(name)
+        self.sym_table.append(new_symbol)
+        return new_symbol
+    
+    def find(self,name:str):
+        top = self.sym_indices_table[-1]-1
+        for i in range(top,-1,-1):
+            if self.sym_table[i].name == name:
+                return self.sym_table
+        raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
+    
+         
+    def get_instruction(self) -> Node:
+
+        if self.lexer.check("tok_debug"):
+            intern_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_debug",node_pos=intern_expression.node_pos,children=[intern_expression])
+        elif self.lexer.check("tok_{"):
+            block = Node("nd_block",node_pos=self.lexer.last_token.token_pos)
+            while(not self.lexer.check("tok_}")):
+                block.children.append(self.get_instruction())
+            return block
+        else:
+            intern_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_drop",node_pos=intern_expression.node_pos,children=[intern_expression])
 
 
     def get_expression(self, prio: int = 0) -> Node:
@@ -603,7 +666,6 @@ def main():
         while(lexer.current_token.token_type != "tok_eof"):
             gencode(optimizer,file=file)
 
-        print("dbg",file=file)
         print("halt",file=file)
 
 
