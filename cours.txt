@@ -77,3 +77,63 @@ find :
     }
     erreur fatale
 
+
+I <- .... | int ident;
+
+A <- | ident;
+
+
+affectation : 
+
+arbre :
+
+drop ( affect ( set<index> , calculs ) )
+
+calculs
+dup
+set <index>
+drop
+
+
+analyse sémantique :
+vérifier que le code est sémantiquement correct 
+(ici juste avoir a = 6 et pas 6 = a)
+
+générer les indexations des get et set
+
+Void SemNode(Node N) {
+    switch N.type:
+        default:
+            for c in N.children
+                SemNode(c)
+
+        case nd_block:
+            begin()
+            for c in N.children
+                SemNode(c)
+            end()
+        
+        case nd_decl
+            S = Declare(N.string)
+            S.index = Nbvar
+            Nbvar++
+        
+        case nd_ref
+            S = Find()
+            N.index = S.index
+        
+        case nd_affect
+            if (N.enfants[0].type != nd_ref)
+                erreur_fatale
+            for .....
+
+        
+        
+}
+
+gen_code(){
+    N = Optim()
+    print("resn", nbvar)
+    gennode(N)
+    print("drop", nbvar)
+}

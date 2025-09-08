@@ -7,15 +7,15 @@ OP = {
     "tok_&&" : { "prio" : 3, "parg" : 4, "node_type" : "nd_and"},
     "tok_==" : { "prio" : 4, "parg" : 5, "node_type" : "nd_iseq"},
     "tok_!=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isnoteq"},
-    "tok_<=" : { "prio" : 5, "parg" : 6, "node_type" : "nd_isinfeq"},
-    "tok_>=" : { "prio" : 5, "parg" : 6, "node_type" : "nd_issupeq"},
-    "tok_<" : { "prio" : 5, "parg" : 6, "node_type" : "nd_isinf"},
-    "tok_>" : { "prio" : 5, "parg" : 6, "node_type" : "nd_issup"},
-    "tok_+" : { "prio" : 6, "parg" : 7, "node_type" : "nd_plus"},
-    "tok_-" : { "prio" : 6, "parg" : 7, "node_type" : "nd_minus"},
-    "tok_*" : { "prio" : 7, "parg" : 8, "node_type" : "nd_mult"},
-    "tok_/" : { "prio" : 7, "parg" : 8, "node_type" : "nd_div"},
-    "tok_%" : { "prio" : 7, "parg" : 8, "node_type" : "nd_mod"},
+    "tok_<=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isinfeq"},
+    "tok_>=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_issupeq"},
+    "tok_<" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isinf"},
+    "tok_>" : { "prio" : 4, "parg" : 5, "node_type" : "nd_issup"},
+    "tok_+" : { "prio" : 5, "parg" : 6, "node_type" : "nd_plus"},
+    "tok_-" : { "prio" : 5, "parg" : 6, "node_type" : "nd_minus"},
+    "tok_*" : { "prio" : 6, "parg" : 7, "node_type" : "nd_mult"},
+    "tok_/" : { "prio" : 6, "parg" : 7, "node_type" : "nd_div"},
+    "tok_%" : { "prio" : 6, "parg" : 7, "node_type" : "nd_mod"},
 }
 
 NF = {
@@ -41,7 +41,7 @@ NF = {
     # Instructions
     "nd_debug" : {"prefix" : "", "suffix" : "dbg"},
     "nd_drop" : {"prefix" : "", "suffix" : "drop 1"},
-    "nd_block" : {"prefix" : "", "suffix" : ""},
+    "nd_block" : {"prefix" : "", "suffix" : ""}
 }
 
 def check_op_prio(token_type : str,prio : int) -> bool:
@@ -59,6 +59,15 @@ class Token:
                  t_pos,     type Tuple(ligne:int, colonne:int), la position du token dans le code
         Sortie : None
         """
+        assert type(token_type)==str, "Mauvais type d'argument node_type (str attendu)"
+        assert type(token_pos)==tuple, "Mauvais type d'argument node_pos (tuple attendu)"
+        for e in token_pos:
+            assert type(e)==int, f"Mauvais type d'argument node_pose à l'indice pour {e} (int attendu)"
+        if token_value:
+            assert type(token_value)==int, "Mauvais type d'argument node_value (int attendu)"
+        if token_string:
+            assert type(token_string)==str, "Mauvais type d'argument node_string (str attendu)"
+        
         self.token_type = token_type
         self.token_value = token_value
         self.token_string = token_string
@@ -89,21 +98,51 @@ class Node:
         Classe représentant les objets Noeud (Node) pour la construction d'arbre dans le but de gérer le code dans le bon ordre
 
         @params
-        Entrée : node_type,     type String, type du noeud
+        Entrée : node_type,     type String, type du noeud, liste d'argument : nd_const (constante num), nd_ident (identifiant str)
                  node_pos,      type Tuple(ligne:int, colonne:int), position du noeud dans le code
                  node_value,    type Int, valeur du noeud quand c'est une constante numérique (optionnel)
                  node_string,   type String, valeur du noeud quand c'est une constante alphabétique (optionnel)
                  children,      type List(Node,Node...), liste des enfants du noeud
         """
+        assert type(node_type)==str, "Mauvais type d'argument node_type (str attendu)"
+        assert node_type[:3]=="nd_", "Le node_type n'est pas valide. Il doit commencer par \"nd_\". node_type donné : {node_type} "
+
+        if node_type == "nd_const":
+            assert node_value!=None, "L'argument node_value doit avoir une valeur quand node_type == nd_const."
+        else:
+            assert node_value==None, "L'argument node_value n'est pas censé avoir de valeur en dehors d'un node_type == nd_const."
+
+        if node_type == "nd_ident":
+            assert node_string!=None, "L'argument node_value doit avoir une valeur quand node_type == nd_ident."
+        else:
+            assert node_string==None, "L'argument node_value n'est pas censé avoir de valeur en dehors d'un node_type == nd_ident."
+
+        assert type(node_pos)==tuple, "Mauvais type d'argument node_pos (tuple attendu)"
+        assert len(node_pos)==2, "Argument node_pos pas acceptable. Il doit être en deux dimensions."
+        for e in node_pos:
+            assert type(e)==int, f"Mauvais type d'argument node_pose à l'indice pour {e} (int attendu)"
+            assert e >-1, f"La position ne peut pas être négative. Position donnée : {node_pos}"
+
+        if node_value:
+            assert type(node_value)==int, "Mauvais type d'argument node_value (int attendu)"
+        if node_string:
+            assert type(node_string)==str, "Mauvais type d'argument node_string (str attendu)"
+        assert type(children)==list, "Mauvais type d'argument children (list attendu)"
+        for c in children:
+            assert type(c)==Node, f"Mauvais type d'argument children. Type donné : {type(c)}"
+        
+
         self.node_type = node_type
         self.node_pos = node_pos
         self.node_value = node_value
         self.node_string = node_string
         self.children = children
 
+
 class Symbol:
     def __init__(self, name:str):
         self.name = name
+
 
 class Lexer:
     def __init__(self, text:str):
@@ -114,6 +153,8 @@ class Lexer:
         Entrée : text, type String, code à compiler
         Sortie : None
         """
+        assert type(text)==str, "Mauvais type d'argument text (str attendu)"
+
         self.pointer_pos : int = 0
         self.current_line : int = 0
         self.current_col : int = 0
@@ -179,6 +220,8 @@ class Lexer:
         Entrée : character, type string, caractère du code rencontré
         Sortie : Boolean, résultat de la comparaison
         """
+        assert type(character)==str, "Mauvais type d'argument character (str attendu)"
+
         return ord('0' ) <= ord(character) <= ord('9')
     
     def is_letter(self,character:str):
@@ -189,6 +232,8 @@ class Lexer:
         Entrée : character, type string, caractère du code rencontré
         Sortie : Boolean, résultat de la comparaison
         """
+        assert type(character)==str, "Mauvais type d'argument character (str attendu)"
+
         return (ord('A') <= ord(character) <= ord('Z')) or (ord('a') <= ord(character) <= ord('z'))
     
     def is_alpha_num(self,character:str):
@@ -199,6 +244,8 @@ class Lexer:
         Entrée : character, type string, caractère du code rencontré
         Sortie : Boolean, résultat de la comparaison
         """
+        assert type(character)==str, "Mauvais type d'argument character (str attendu)"
+
         return self.is_number(character) or self.is_letter(character)
     
     # -----
@@ -407,6 +454,8 @@ class Lexer:
         Entrée : token_type, type string, type du token 
         Sortie : None
         """
+        assert type(token_type)==str, "Mauvais type d'argument token_type (str attendu)"
+
         if not self.check(token_type):
             line, col = self.current_token.token_pos
             raise ValueError(f"wrong token at pos ({line = } {col = }) expected a token of type {token_type}")
@@ -422,6 +471,8 @@ class Lexer:
         Entrée : token_type, type string, type du token 
         Sortie : Boolean, résultat de la comparaison
         """
+        assert type(token_type)==str, "Mauvais type d'argument token_type (str attendu)"
+
         if self.current_token.token_type == token_type:
             self.next_token()
             return True
@@ -464,6 +515,7 @@ class Parser:
         self.sym_table = self.sym_table[:new_end]
     
     def declare(self,name:str):
+        assert type(name)==str, "L'argument name n'a pas le type attendu (String)."
         if len(self.sym_indices_table) == 0:
             raise ValueError(f"Not in a scope at pos{self.lexer.current_token.token_pos}")
         elif len(self.sym_indices_table) == 1:
@@ -482,13 +534,13 @@ class Parser:
         return new_symbol
     
     def find(self,name:str):
+        assert type(name)==str, "L'argument name n'a pas le type attendu (String)."
         top = self.sym_indices_table[-1]-1
         for i in range(top,-1,-1):
             if self.sym_table[i].name == name:
                 return self.sym_table
         raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
     
-         
     def get_instruction(self) -> Node:
 
         if self.lexer.check("tok_debug"):
@@ -514,6 +566,8 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
+        assert type(prio)==int, "Mauvais type de priorité (int attendu)"
+
         first_part = self.get_prefix()
 
         while check_op_prio(self.lexer.current_token.token_type, prio):
@@ -673,4 +727,5 @@ def main():
 
 
 if __name__ == "__main__":
+    
     main()
