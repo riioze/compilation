@@ -80,7 +80,7 @@ find :
 
 I <- .... | int ident;
 
-A <- | ident;
+A <- | ident
 
 
 affectation : 
@@ -125,7 +125,7 @@ Void SemNode(Node N) {
         case nd_affect
             if (N.enfants[0].type != nd_ref)
                 erreur_fatale
-            for .....
+            for ....
 
         
         

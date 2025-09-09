@@ -90,32 +90,32 @@ class Token:
     
         return string
 
+all_nodes = []
 
 class Node:
      
-    def __init__(self, node_type:str,node_pos: Tuple[int,int], node_value : Optional[int] = None, node_string: Optional[str] = None, children: List['Node'] = []):
+    def __init__(self, node_type:str,node_pos: Tuple[int,int], node_value : Optional[int] = None, node_string: Optional[str] = None, node_children: List['Node'] = None):
         """ 
         Classe représentant les objets Noeud (Node) pour la construction d'arbre dans le but de gérer le code dans le bon ordre
 
         @params
-        Entrée : node_type,     type String, type du noeud, liste d'argument : nd_const (constante num), nd_ident (identifiant str)
+        Entrée : node_type,     type String, type du noeud, liste d'argument : nd_const (constante num), nd_ref (identifiant str)
                  node_pos,      type Tuple(ligne:int, colonne:int), position du noeud dans le code
                  node_value,    type Int, valeur du noeud quand c'est une constante numérique (optionnel)
                  node_string,   type String, valeur du noeud quand c'est une constante alphabétique (optionnel)
-                 children,      type List(Node,Node...), liste des enfants du noeud
+                 node_children,      type List(Node,Node...), liste des enfants du noeud
         """
         assert type(node_type)==str, "Mauvais type d'argument node_type (str attendu)"
-        assert node_type[:3]=="nd_", "Le node_type n'est pas valide. Il doit commencer par \"nd_\". node_type donné : {node_type} "
-
+        assert node_type[:3]=="nd_", f"Le node_type n'est pas valide. Il doit commencer par \"nd_\". node_type donné : {node_type} "
         if node_type == "nd_const":
             assert node_value!=None, "L'argument node_value doit avoir une valeur quand node_type == nd_const."
         else:
             assert node_value==None, "L'argument node_value n'est pas censé avoir de valeur en dehors d'un node_type == nd_const."
 
-        if node_type == "nd_ident":
-            assert node_string!=None, "L'argument node_value doit avoir une valeur quand node_type == nd_ident."
+        if (node_type == "nd_ref" or node_type == "nd_decl"):
+            assert node_string!=None, "L'argument node_string doit avoir une valeur quand node_type == nd_ref ou nd_decl."
         else:
-            assert node_string==None, "L'argument node_value n'est pas censé avoir de valeur en dehors d'un node_type == nd_ident."
+            assert node_string==None, f"L'argument node_string n'est pas censé avoir de valeur en dehors d'un node_type == nd_ref ou nd_decl, ici c'est {node_type}."
 
         assert type(node_pos)==tuple, "Mauvais type d'argument node_pos (tuple attendu)"
         assert len(node_pos)==2, "Argument node_pos pas acceptable. Il doit être en deux dimensions."
@@ -127,21 +127,38 @@ class Node:
             assert type(node_value)==int, "Mauvais type d'argument node_value (int attendu)"
         if node_string:
             assert type(node_string)==str, "Mauvais type d'argument node_string (str attendu)"
-        assert type(children)==list, "Mauvais type d'argument children (list attendu)"
-        for c in children:
-            assert type(c)==Node, f"Mauvais type d'argument children. Type donné : {type(c)}"
+        assert type(node_children)==list or node_children == None, "Mauvais type d'argument children (list attendu)"
+        if node_children:
+            for c in node_children:
+                assert type(c)==Node, f"Mauvais type d'argument children. Type donné : {type(c)}"
         
 
         self.node_type = node_type
         self.node_pos = node_pos
         self.node_value = node_value
         self.node_string = node_string
-        self.children = children
+        if node_children:
+            self.children = node_children
+        else:
+            self.children = []
+        self.index = -1
+
+        all_nodes.append(self)
+    
+    def __str__(self):
+        return f"Node( {self.node_type=} {self.node_pos} {self.node_string=} {self.node_value} {self.index=} )"
+
+    def __repr__(self):
+        return self.__str__()
 
 
 class Symbol:
     def __init__(self, name:str):
         self.name = name
+        self.index = -1
+    
+    def __repr__(self):
+        return f"Symbol({self.name=} {self.index=})"
 
 
 class Lexer:
@@ -492,6 +509,7 @@ class Parser:
 
         self.sym_table : List[Symbol] = []
         self.sym_indices_table : List[int] = []
+        self.nb_var = 0
         
     
     def next_tree(self):
@@ -502,7 +520,40 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
-        return self.get_instruction()
+        tree = self.get_instruction()
+        self.nb_var = 0
+        self.sem_node(tree)
+        return tree
+    
+    def sem_node(self,node:Node):
+        match node.node_type:
+
+            
+            case "nd_block":
+                self.begin()
+                for child in node.children:
+                    self.sem_node(child)
+                self.end()
+            
+            case "nd_decl":
+                s = self.declare(node.node_string)
+                s.index = self.nb_var
+                self.nb_var+=1
+            
+            case "nd_ref":
+                s = self.find(node.node_string)
+                assert s.index!=-1
+                node.index = s.index
+            
+            case "nd_affect":
+                if node.children[0].node_type != "nd_ref":
+                    raise ValueError(f"Waiting identifier at {node.node_pos} before affectation")
+                for child in node.children:
+                    self.sem_node(child)
+
+            case default:
+                for child in node.children:
+                    self.sem_node(child)
     
     def begin(self):
         if self.sym_indices_table == []:
@@ -531,6 +582,7 @@ class Parser:
         
         new_symbol = Symbol(name)
         self.sym_table.append(new_symbol)
+        self.sym_indices_table[-1]+=1
         return new_symbol
     
     def find(self,name:str):
@@ -538,7 +590,7 @@ class Parser:
         top = self.sym_indices_table[-1]-1
         for i in range(top,-1,-1):
             if self.sym_table[i].name == name:
-                return self.sym_table
+                return self.sym_table[i]
         raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
     
     def get_instruction(self) -> Node:
@@ -546,16 +598,22 @@ class Parser:
         if self.lexer.check("tok_debug"):
             intern_expression = self.get_expression()
             self.lexer.accept("tok_;")
-            return Node("nd_debug",node_pos=intern_expression.node_pos,children=[intern_expression])
+            return Node("nd_debug",node_pos=intern_expression.node_pos,node_children=[intern_expression])
         elif self.lexer.check("tok_{"):
             block = Node("nd_block",node_pos=self.lexer.last_token.token_pos)
             while(not self.lexer.check("tok_}")):
                 block.children.append(self.get_instruction())
             return block
+        elif self.lexer.check("tok_int"):
+            token = self.lexer.current_token
+            self.lexer.accept("tok_ident")
+            self.lexer.accept("tok_;")
+            return Node("nd_decl",token.token_pos,node_string=token.token_string)
+
         else:
             intern_expression = self.get_expression()
             self.lexer.accept("tok_;")
-            return Node("nd_drop",node_pos=intern_expression.node_pos,children=[intern_expression])
+            return Node("nd_drop",node_pos=intern_expression.node_pos,node_children=[intern_expression])
 
 
     def get_expression(self, prio: int = 0) -> Node:
@@ -574,7 +632,7 @@ class Parser:
             op_token = self.lexer.current_token
             self.lexer.next_token()
             second_part = self.get_expression(OP[op_token.token_type]["parg"])
-            first_part = Node(OP[op_token.token_type]["node_type"],node_pos=op_token.token_pos,children=[first_part,second_part])
+            first_part = Node(OP[op_token.token_type]["node_type"],node_pos=op_token.token_pos,node_children=[first_part,second_part])
         return first_part
 
     def get_suffix(self) -> Node:
@@ -607,7 +665,7 @@ class Parser:
             intern_prefix = self.get_prefix()
 
             # Création d'un noeud correspondant au token
-            node_not = Node("nd_not",node_pos=token_not.token_pos,children=[intern_prefix])
+            node_not = Node("nd_not",node_pos=token_not.token_pos,node_children=[intern_prefix])
 
             # Renvoi du noeud
             return node_not
@@ -621,7 +679,7 @@ class Parser:
             intern_prefix = self.get_prefix()
 
             # Création d'un noeud correspondant au token
-            node_neg = Node("nd_neg",node_pos=token_neg.token_pos,children=[intern_prefix])
+            node_neg = Node("nd_neg",node_pos=token_neg.token_pos,node_children=[intern_prefix])
 
             # Renvoi du noeud
             return node_neg
@@ -650,7 +708,7 @@ class Parser:
             token = self.lexer.last_token
 
             # Renvoi du noeud correspondant au token
-            return Node("nd_const",node_pos=token.token_pos,node_value=token.token_value)
+            return Node("nd_const",node_pos=token.token_pos,node_value=token.token_value,node_children=[])
 
         elif self.lexer.check("tok_("):
 
@@ -662,9 +720,14 @@ class Parser:
 
             # Renvoi de l'expression
             return expression
+
+        elif self.lexer.check("tok_ident"):
+
+            token = self.lexer.last_token
+
+            return Node("nd_ref",node_pos=token.token_pos,node_string=token.token_string)
         
         else:
-            print(self.lexer.current_token)
             # Token non accepté dans la grammaire régissant ce modèle atome, renvoi d'une erreur
             raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const or expression")
 
@@ -679,7 +742,9 @@ class Optimizer:
 
 def gencode(optimizer:Optimizer,file):
     tree = optimizer.next_tree()
+    print(f"resn {optimizer.parser.nb_var}",file=file)
     gennode(tree,file)
+    print(f"drop {optimizer.parser.nb_var}",file=file)
 
 def gennode(node:Node,file):
 
@@ -695,6 +760,20 @@ def gennode(node:Node,file):
     match node.node_type:
         case "nd_const":
             print(f"push {node.node_value}",file=file)
+        
+        case "nd_ref":
+            assert node.index != -1, "Index not set"
+            print(f"get {node.index}",file=file)
+        
+        case "nd_decl":
+            pass
+
+        case "nd_affect":
+            gennode(node.children[1],file)
+            print("dup",file=file)
+            identifier = node.children[0]
+            assert identifier.index >= 0, f"index not set {str(identifier)}"
+            print(f"set {identifier.index}",file=file)
         
         case other:
             raise ValueError(f"node_type {other} at pos {node.node_pos} unknown")

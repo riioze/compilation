@@ -1,4 +1,10 @@
 {
-    debug 4+5;
-    5;
+    int x;
+    x=5;
+    debug 2 * x;
+    {
+        x=3;
+        debug x;
+    }
+    debug x;
 }
