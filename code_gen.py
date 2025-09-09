@@ -28,15 +28,18 @@ NF = {
 }
 
 
-
-
+global n_label
+n_label = 0
 def gencode(optimizer:Optimizer,file):
+    
     tree = optimizer.next_tree()
     print(f"resn {optimizer.parser.nb_var}",file=file)
     gennode(tree,file)
     print(f"drop {optimizer.parser.nb_var}",file=file)
 
 def gennode(node:Node,file):
+
+    global n_label
 
     node_type = node.node_type
     if node_type in NF:
@@ -64,6 +67,20 @@ def gennode(node:Node,file):
             identifier = node.children[0]
             assert identifier.index >= 0, f"index not set {str(identifier)}"
             print(f"set {identifier.index}",file=file)
+        
+        case "nd_cond":
+            gennode(node.children[0],file=file)
+            n_label+=1
+            label = n_label
+            print(f"jumpf l{label}a",file=file)
+            gennode(node.children[1],file=file)
+            print(f"jump l{label}b",file=file)
+            print(f".l{label}a",file=file)
+            if len(node.children) == 3:
+                gennode(node.children[2],file=file)
+            print(f".l{label}b",file=file)                
+
+            
         
         case other:
             raise ValueError(f"node_type {other} at pos {node.node_pos} unknown")

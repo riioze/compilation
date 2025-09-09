@@ -143,6 +143,18 @@ class Parser:
             self.lexer.accept("tok_ident")
             self.lexer.accept("tok_;")
             return Node("nd_decl",token.token_pos,node_string=token.token_string)
+        elif self.lexer.check("tok_if"):
+            
+            if_token = self.lexer.last_token
+            self.lexer.accept("tok_(")
+            condition_expression = self.get_expression()
+            self.lexer.accept("tok_)")
+            instruction1 = self.get_instruction()
+            cond_node = Node("nd_cond", node_pos=if_token.token_pos,node_children=[condition_expression,instruction1])
+            if self.lexer.check("tok_else"):
+                instruction2 = self.get_instruction()
+                cond_node.children.append(instruction2)
+            return cond_node
 
         else:
             intern_expression = self.get_expression()
