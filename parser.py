@@ -1,0 +1,268 @@
+from lexer import *
+from node import *
+
+OP = {
+    "tok_=" : { "prio" : 1, "parg" : 1, "node_type" : "nd_affect"},
+    "tok_||" : { "prio" : 2, "parg" : 3, "node_type" : "nd_or"},
+    "tok_&&" : { "prio" : 3, "parg" : 4, "node_type" : "nd_and"},
+    "tok_==" : { "prio" : 4, "parg" : 5, "node_type" : "nd_iseq"},
+    "tok_!=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isnoteq"},
+    "tok_<=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isinfeq"},
+    "tok_>=" : { "prio" : 4, "parg" : 5, "node_type" : "nd_issupeq"},
+    "tok_<" : { "prio" : 4, "parg" : 5, "node_type" : "nd_isinf"},
+    "tok_>" : { "prio" : 4, "parg" : 5, "node_type" : "nd_issup"},
+    "tok_+" : { "prio" : 5, "parg" : 6, "node_type" : "nd_plus"},
+    "tok_-" : { "prio" : 5, "parg" : 6, "node_type" : "nd_minus"},
+    "tok_*" : { "prio" : 6, "parg" : 7, "node_type" : "nd_mult"},
+    "tok_/" : { "prio" : 6, "parg" : 7, "node_type" : "nd_div"},
+    "tok_%" : { "prio" : 6, "parg" : 7, "node_type" : "nd_mod"},
+}
+
+def check_op_prio(token_type : str,prio : int) -> bool:
+    return token_type in OP.keys() and OP[token_type]["prio"] >= prio
+
+class Symbol:
+    def __init__(self, name:str):
+        self.name = name
+        self.index = -1
+    
+    def __repr__(self):
+        return f"Symbol({self.name=} {self.index=})"
+
+class Parser:
+
+    def __init__(self,lexer:Lexer):
+        """ 
+        Classe récupérant les tokens un par un et les transforme en noeud pour créer l'arbre représentant le code
+
+        @params:
+        Entrée : lexer, type Lexer, objet d'analyse du code pour la transformation en token
+        Sortie : None
+        """
+        self.lexer = lexer
+
+        self.sym_table : List[Symbol] = []
+        self.sym_indices_table : List[int] = []
+        self.nb_var = 0
+        
+    
+    def next_tree(self):
+        """ 
+        Méthode renvoyant un noeud représentant la prochaine expression
+
+        @params:
+        Entrée : None
+        Sortie : Node
+        """
+        tree = self.get_instruction()
+        self.nb_var = 0
+        self.sem_node(tree)
+        return tree
+    
+    def sem_node(self,node:Node):
+        match node.node_type:
+
+            
+            case "nd_block":
+                self.begin()
+                for child in node.children:
+                    self.sem_node(child)
+                self.end()
+            
+            case "nd_decl":
+                s = self.declare(node.node_string)
+                s.index = self.nb_var
+                self.nb_var+=1
+            
+            case "nd_ref":
+                s = self.find(node.node_string)
+                assert s.index!=-1
+                node.index = s.index
+            
+            case "nd_affect":
+                if node.children[0].node_type != "nd_ref":
+                    raise ValueError(f"Waiting identifier at {node.node_pos} before affectation")
+                for child in node.children:
+                    self.sem_node(child)
+
+            case default:
+                for child in node.children:
+                    self.sem_node(child)
+    
+    def begin(self):
+        if self.sym_indices_table == []:
+            self.sym_indices_table.append(0)
+        else:
+            self.sym_indices_table.append(self.sym_indices_table[-1])
+    
+    def end(self):
+        new_end = self.sym_indices_table.pop()
+        self.sym_table = self.sym_table[:new_end]
+    
+    def declare(self,name:str):
+        assert type(name)==str, "L'argument name n'a pas le type attendu (String)."
+        if len(self.sym_indices_table) == 0:
+            raise ValueError(f"Not in a scope at pos{self.lexer.current_token.token_pos}")
+        elif len(self.sym_indices_table) == 1:
+            bottom = 0
+            top = self.sym_indices_table[0]
+        else:
+            bottom = self.sym_indices_table[-2]
+            top = self.sym_indices_table[-1]
+        
+        for i in range(bottom,top):
+            if self.sym_table[i].name == name:
+                raise ValueError(f"Name {name} at pos {self.lexer.current_token.token_pos} already declared in current scope")
+        
+        new_symbol = Symbol(name)
+        self.sym_table.append(new_symbol)
+        self.sym_indices_table[-1]+=1
+        return new_symbol
+    
+    def find(self,name:str):
+        assert type(name)==str, "L'argument name n'a pas le type attendu (String)."
+        top = self.sym_indices_table[-1]-1
+        for i in range(top,-1,-1):
+            if self.sym_table[i].name == name:
+                return self.sym_table[i]
+        raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
+    
+    def get_instruction(self) -> Node:
+
+        if self.lexer.check("tok_debug"):
+            intern_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_debug",node_pos=intern_expression.node_pos,node_children=[intern_expression])
+        elif self.lexer.check("tok_{"):
+            block = Node("nd_block",node_pos=self.lexer.last_token.token_pos)
+            while(not self.lexer.check("tok_}")):
+                block.children.append(self.get_instruction())
+            return block
+        elif self.lexer.check("tok_int"):
+            token = self.lexer.current_token
+            self.lexer.accept("tok_ident")
+            self.lexer.accept("tok_;")
+            return Node("nd_decl",token.token_pos,node_string=token.token_string)
+
+        else:
+            intern_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_drop",node_pos=intern_expression.node_pos,node_children=[intern_expression])
+
+
+    def get_expression(self, prio: int = 0) -> Node:
+        """ 
+        Méthode renvoyant un noeud représentant une expression complète
+
+        @params:
+        Entrée : None
+        Sortie : Node
+        """
+        assert type(prio)==int, "Mauvais type de priorité (int attendu)"
+
+        first_part = self.get_prefix()
+
+        while check_op_prio(self.lexer.current_token.token_type, prio):
+            op_token = self.lexer.current_token
+            self.lexer.next_token()
+            second_part = self.get_expression(OP[op_token.token_type]["parg"])
+            first_part = Node(OP[op_token.token_type]["node_type"],node_pos=op_token.token_pos,node_children=[first_part,second_part])
+        return first_part
+
+    def get_suffix(self) -> Node:
+        """ 
+        Méthode renvoyant un noeud opérateur suffixe (appel de fonction, indexation) avec comme enfant le reste de l'expression
+
+        @params
+        Entrée : None
+        Sortie : Node
+        """
+
+        return self.get_atom()
+
+    def get_prefix(self) -> Node:
+        """ 
+        Méthode renvoyant un noeud opérateur préfixe (!, -, +, *, &) avec comme enfant le reste de l'expression
+
+        @params
+        Entrée : None
+        Sortie : Node
+        """
+
+        # Parcours en fonction du préfixe
+        if self.lexer.check("tok_!"):
+
+            # Récupération du dernier token rencontré ( tok_! )
+            token_not = self.lexer.last_token
+            
+            # Récupération du reste de l'expression en se rappelant elle-même
+            intern_prefix = self.get_prefix()
+
+            # Création d'un noeud correspondant au token
+            node_not = Node("nd_not",node_pos=token_not.token_pos,node_children=[intern_prefix])
+
+            # Renvoi du noeud
+            return node_not
+        
+        elif self.lexer.check("tok_-"):
+
+            # Récupération du dernier token rencontré ( tok_- )
+            token_neg = self.lexer.last_token
+
+            # Récupération du reste de l'expression en se rappelant elle-même
+            intern_prefix = self.get_prefix()
+
+            # Création d'un noeud correspondant au token
+            node_neg = Node("nd_neg",node_pos=token_neg.token_pos,node_children=[intern_prefix])
+
+            # Renvoi du noeud
+            return node_neg
+        
+        elif self.lexer.check("tok_+"):
+            # Préfix + inutile (comme dans "+5", suppression du "+" inutile)
+            return self.get_prefix()
+        
+        else:
+            # Lorsqu'on rencontre quelque chose de différent des préfixes définis, renvoi en tant que suffixe
+            return self.get_suffix()
+
+    def get_atom(self) -> Node:
+        """ 
+        Méthode renvoyant un noeud atome (constante numérique ou une expression entre parenthèse) 
+
+        @params
+        Entrée : None
+        Sortie : Node
+        """
+
+        # Parcours en fonction du token rencontré
+        if self.lexer.check("tok_const"):
+
+            # Récupération du dernier token ( tok_const )
+            token = self.lexer.last_token
+
+            # Renvoi du noeud correspondant au token
+            return Node("nd_const",node_pos=token.token_pos,node_value=token.token_value,node_children=[])
+
+        elif self.lexer.check("tok_("):
+
+            # Récupération de l'expression parenthésée
+            expression = self.get_expression()
+
+            # Vérification de la fermeture de l'expression par une parenthèse fermante
+            self.lexer.accept("tok_)")
+
+            # Renvoi de l'expression
+            return expression
+
+        elif self.lexer.check("tok_ident"):
+
+            token = self.lexer.last_token
+
+            return Node("nd_ref",node_pos=token.token_pos,node_string=token.token_string)
+        
+        else:
+            # Token non accepté dans la grammaire régissant ce modèle atome, renvoi d'une erreur
+            raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const or expression")
+
+    
