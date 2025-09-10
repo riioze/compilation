@@ -1,0 +1,16 @@
+Probleme de permissions : 
+
+chmod -R 774
+
+
+--
+
+Compiler le .c :
+
+gcc -o msm msm.c
+
+---
+Lancer le programme : 
+
+cat prg.asm | ./msm.exe -d -d
+./msm prg.asm
