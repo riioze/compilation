@@ -28,8 +28,10 @@ NF = {
 }
 
 
-global n_label
+global n_label,l_label
 n_label = 0
+l_label = 0
+
 def gencode(optimizer:Optimizer,file):
     
     tree = optimizer.next_tree()
@@ -39,7 +41,7 @@ def gencode(optimizer:Optimizer,file):
 
 def gennode(node:Node,file):
 
-    global n_label
+    global n_label,l_label
 
     node_type = node.node_type
     if node_type in NF:
@@ -78,9 +80,27 @@ def gennode(node:Node,file):
             print(f".l{label}a",file=file)
             if len(node.children) == 3:
                 gennode(node.children[2],file=file)
-            print(f".l{label}b",file=file)                
+            print(f".l{label}b",file=file)
 
-            
+        case "nd_loop":
+            tmp = l_label
+            n_label+=1
+            l_label = n_label
+            print(f".l{l_label}a",file=file)
+            for child in node.children: gennode(child,file=file)
+            print(f"jump l{l_label}a",file=file)
+            print(f".l{l_label}b",file=file)
+            l_label = tmp
+
+        case "nd_break":
+            print(f"jump l{l_label}b",file=file)
+        
+        case "nd_continue":
+            print(f"jump l{l_label}c",file=file)
+        
+        case "nd_target":
+            print(f".l{l_label}c",file=file)
+
         
         case other:
             raise ValueError(f"node_type {other} at pos {node.node_pos} unknown")

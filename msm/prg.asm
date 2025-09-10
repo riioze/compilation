@@ -1,31 +1,30 @@
 .start
 resn 1
-push 1
+push 0
 dup
 set 0
 drop 1
-get 0
-push 0
-cmpeq
-jumpf l1a
-push 0
-dbg
-
-jump l1b
 .l1a
+.l1c
+get 0
+dbg
 get 0
 push 1
-cmpeq
-jumpf l2a
-push 5
-dbg
+add
+dup
+set 0
+drop 1
 
+get 0
+push 10
+cmple
+jumpf l2a
+jump l1c
 jump l2b
 .l2a
-push 10
-dbg
-
+jump l1b
 .l2b
+jump l1a
 .l1b
 
 drop 1

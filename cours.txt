@@ -160,8 +160,8 @@ I <- .....
     | while (E) I | break; | continue; | do I while (E); | for (E1;E2;E3) I
 
 while : loop (target cond(Ex I1 break))
-do while : loop (target I1 cond (Ex continue break))
-for : seq(E1 loop(cond(E2 seq(I1 target E3) break)))
+do while : loop (target I1 cond(Ex continue break))
+for : seq(drop(E1) loop(cond(E2 seq(I1 target drop(E3)) break)))
 
 
 loop : 

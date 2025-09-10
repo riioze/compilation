@@ -155,6 +155,62 @@ class Parser:
                 instruction2 = self.get_instruction()
                 cond_node.children.append(instruction2)
             return cond_node
+        
+        elif self.lexer.check("tok_while"):
+            while_token = self.lexer.last_token
+            self.lexer.accept("tok_(")
+            condition = self.get_expression()
+            self.lexer.accept("tok_)")
+            instruction = self.get_instruction()
+
+            loop_node = Node("nd_loop",node_pos=while_token.token_pos)
+            target_node = Node("nd_target",node_pos=while_token.token_pos)
+            cond_node = Node("nd_cond",node_pos=while_token.token_pos)
+            break_node = Node("nd_break",node_pos=while_token.token_pos)
+           
+            loop_node.children.append(target_node)
+            loop_node.children.append(cond_node)
+
+            cond_node.children.append(condition)
+            cond_node.children.append(instruction)
+            cond_node.children.append(break_node)
+            return loop_node
+        
+        elif self.lexer.check("tok_do"):
+            instruction = self.get_instruction()
+            self.lexer.accept("tok_while")
+            while_token = self.lexer.last_token
+            self.lexer.accept("tok_(")
+            condition = self.get_expression()
+            self.lexer.accept("tok_)")
+            self.lexer.accept("tok_;")
+
+            loop_node = Node("nd_loop",node_pos=while_token.token_pos)
+            target_node = Node("nd_target",node_pos=while_token.token_pos)
+            cond_node = Node("nd_cond",node_pos=while_token.token_pos)
+            break_node = Node("nd_break",node_pos=while_token.token_pos)
+            continue_node = Node("nd_continue",node_pos=while_token.token_pos)
+
+            loop_node.children.append(target_node)
+            loop_node.children.append(instruction)
+            loop_node.children.append(cond_node)
+
+            cond_node.children.append(condition)
+            cond_node.children.append(continue_node)
+            cond_node.children.append(break_node)
+            return loop_node
+
+        elif self.lexer.check("tok_for"):
+
+            self.lexer.accept("tok_(")
+            init_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            cond_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            step_expression = self.get_expression()
+            self.lexer.accept("tok_)")
+
+            
 
         else:
             intern_expression = self.get_expression()
