@@ -202,6 +202,8 @@ class Parser:
 
         elif self.lexer.check("tok_for"):
 
+            for_tok = self.lexer.last_token
+
             self.lexer.accept("tok_(")
             init_expression = self.get_expression()
             self.lexer.accept("tok_;")
@@ -210,7 +212,37 @@ class Parser:
             step_expression = self.get_expression()
             self.lexer.accept("tok_)")
 
-            
+            instruction = self.get_instruction()
+
+            global_seq_node = Node("nd_seq",node_pos=for_tok.token_pos)
+
+            init_instruction = Node("nd_drop",node_pos=init_expression.node_pos,node_children=[init_expression])
+
+            loop_node = Node("nd_loop",node_pos=for_tok.token_pos)
+
+            restart_seq = Node("nd_seq",node_pos=for_tok.token_pos)
+
+            target_instruction = Node("nd_target",node_pos=for_tok.token_pos)
+            step_instruction = Node("nd_drop",step_expression.node_pos,node_children=[step_expression])
+
+            break_instruction = Node("nd_break",node_pos=for_tok.token_pos)
+
+            cond_instruction = Node("nd_cond",node_pos=for_tok.token_pos)
+
+            restart_seq.children.append(instruction)
+            restart_seq.children.append(target_instruction)
+            restart_seq.children.append(step_instruction)
+
+            cond_instruction.children.append(cond_expression)
+            cond_instruction.children.append(restart_seq)
+            cond_instruction.children.append(break_instruction)
+
+            loop_node.children.append(cond_instruction)
+
+            global_seq_node.children.append(init_instruction)
+            global_seq_node.children.append(loop_node)
+
+            return global_seq_node
 
         else:
             intern_expression = self.get_expression()
