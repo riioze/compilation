@@ -25,7 +25,8 @@ NF = {
     "nd_drop" : {"prefix" : "", "suffix" : "drop 1"},
     "nd_block" : {"prefix" : "", "suffix" : ""},
     "nd_seq" : {"prefix" : "", "suffix" : ""},
-    "nd_return" : {"prefix": "", "suffix":"ret"}
+    "nd_return" : {"prefix": "", "suffix":"ret"},
+    "nd_ind" : {"prefix":"", "suffix":"read"},
 }
 
 
@@ -66,8 +67,12 @@ def gennode(node:Node,file):
             gennode(node.children[1],file)
             print("dup",file=file)
             identifier = node.children[0]
-            assert identifier.index >= 0, f"index not set {str(identifier)}"
-            print(f"set {identifier.index}",file=file)
+            if identifier.node_type == "nd_ind":
+                gennode(identifier.children[0],file=file)
+                print("write",file=file)
+            else:
+                assert identifier.index >= 0, f"index not set {str(identifier)}"
+                print(f"set {identifier.index}",file=file)
         
         case "nd_cond":
             gennode(node.children[0],file=file)
@@ -117,6 +122,15 @@ def gennode(node:Node,file):
             for child in node.children[1:]:
                 gennode(child,file=file)
             print(f"call {len(node.children)-1}",file=file)
+
+        case "nd_adr":
+            print("prep start",file=file)
+            print("swap",file=file)
+            print("drop 1",file=file)
+            print("push 1",file=file)
+            print("sub",file=file)
+            print(f"push {node.children[0].index}",file=file)
+            print("sub",file=file)
 
 
         

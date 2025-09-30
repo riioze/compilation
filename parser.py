@@ -85,7 +85,7 @@ class Parser:
                 node.index = s.index
             
             case "nd_affect":
-                if node.children[0].node_type != "nd_ref":
+                if node.children[0].node_type not in ["nd_ref","nd_ind"]:
                     raise ValueError(f"Waiting identifier at {node.node_pos} before affectation")
                 self.sem_nodes_children(node)
 
@@ -146,11 +146,13 @@ class Parser:
         for i in range(top,-1,-1):
             if self.sym_table[i].name == name:
                 return self.sym_table[i]
+        print(self.sym_table)
         raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
     
     def get_function(self) -> Node:
 
         self.lexer.accept("tok_int")
+        while self.lexer.check("tok_*"):pass # retire les * "inutiles"
         self.lexer.accept("tok_ident")
         identifier_tok = self.lexer.last_token
         self.lexer.accept("tok_(")
@@ -188,6 +190,10 @@ class Parser:
                 block.children.append(self.get_instruction())
             return block
         elif self.lexer.check("tok_int"):
+            
+
+            while(self.lexer.check("tok_*")):pass
+
             token = self.lexer.current_token
             self.lexer.accept("tok_ident")
             self.lexer.accept("tok_;")
@@ -394,6 +400,12 @@ class Parser:
             # Préfix + inutile (comme dans "+5", suppression du "+" inutile)
             return self.get_prefix()
         
+        elif self.lexer.check("tok_*"):
+            return Node("nd_ind",node_pos=self.lexer.last_token.token_pos,node_children=[self.get_prefix()])
+        
+        elif self.lexer.check("tok_&"):
+            return Node("nd_adr",node_pos=self.lexer.last_token.token_pos,node_children=[self.get_prefix()])
+
         else:
             # Lorsqu'on rencontre quelque chose de différent des préfixes définis, renvoi en tant que suffixe
             return self.get_suffix()
@@ -432,6 +444,7 @@ class Parser:
             token = self.lexer.last_token
 
             return Node("nd_ref",node_pos=token.token_pos,node_string=token.token_string)
+        
         
         else:
             # Token non accepté dans la grammaire régissant ce modèle atome, renvoi d'une erreur

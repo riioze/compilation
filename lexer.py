@@ -33,7 +33,7 @@ class Lexer:
             "continue",
             "debug",
             "send",
-            "rec"
+            "recv"
         ]
 
         self.text = text
