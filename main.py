@@ -18,14 +18,19 @@ def main():
 
     with open("msm/prg.asm",'w') as file:
 
-        
-
-        print(".start",file=file)
+        parser.begin()
 
         while(lexer.current_token.token_type != "tok_eof"):
             gencode(optimizer,file=file)
 
+        parser.end()
+
+        print(".start",file=file)
+        print("prep main",file=file)
+        print("call 0",file=file)
         print("halt",file=file)
+
+        
 
 
 if __name__ == "__main__":

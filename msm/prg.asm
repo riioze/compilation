@@ -1,57 +1,42 @@
-.start
+.a
+resn 1
+get 0
+push 4
+add
+ret
+
+push 0
+ret
+.b
 resn 2
+get 0
+get 1
+add
+ret
+
 push 0
+ret
+.main
+resn 1
+push 12
 dup
 set 0
 drop 1
-.l1a
+prep a
 get 0
-push 5
-cmplt
-jumpf l2a
-push 0
-dup
-set 1
-drop 1
-.l3a
-get 1
-get 0
-cmplt
-jumpf l4a
-get 1
+call 1
 dbg
-
-.l3c
-get 1
-push 1
-add
-dup
-set 1
-drop 1
-
-jump l4b
-.l4a
-jump l3b
-.l4b
-jump l3a
-.l3b
-
-
-.l1c
+prep b
 get 0
-push 1
-add
-dup
-set 0
-drop 1
+push 13
+call 2
+dbg
+push 0
+ret
 
-jump l2b
-.l2a
-jump l1b
-.l2b
-jump l1a
-.l1b
-
-
-drop 2
+push 0
+ret
+.start
+prep main
+call 0
 halt

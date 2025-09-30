@@ -25,6 +25,7 @@ NF = {
     "nd_drop" : {"prefix" : "", "suffix" : "drop 1"},
     "nd_block" : {"prefix" : "", "suffix" : ""},
     "nd_seq" : {"prefix" : "", "suffix" : ""},
+    "nd_return" : {"prefix": "", "suffix":"ret"}
 }
 
 
@@ -35,9 +36,7 @@ l_label = 0
 def gencode(optimizer:Optimizer,file):
     
     tree = optimizer.next_tree()
-    print(f"resn {optimizer.parser.nb_var}",file=file)
     gennode(tree,file)
-    print(f"drop {optimizer.parser.nb_var}",file=file)
 
 def gennode(node:Node,file):
 
@@ -100,6 +99,25 @@ def gennode(node:Node,file):
         
         case "nd_target":
             print(f".l{l_label}c",file=file)
+
+        case "nd_func":
+        
+            print(f".{node.node_string}",file=file)
+            print(f"resn {node.node_value}",file=file)
+
+            instruction = node.children[-1]
+            gennode(instruction,file=file)
+
+            print("push 0",file=file)
+            print("ret",file=file)
+        
+        case "nd_call":
+
+            print(f"prep {node.children[0].node_string}",file=file)
+            for child in node.children[1:]:
+                gennode(child,file=file)
+            print(f"call {len(node.children)-1}",file=file)
+
 
         
         case other:

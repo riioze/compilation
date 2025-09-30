@@ -22,12 +22,13 @@ def check_op_prio(token_type : str,prio : int) -> bool:
     return token_type in OP.keys() and OP[token_type]["prio"] >= prio
 
 class Symbol:
-    def __init__(self, name:str):
+    def __init__(self, name:str,sym_type="int"):
         self.name = name
         self.index = -1
+        self.type_ = sym_type
     
     def __repr__(self):
-        return f"Symbol({self.name=} {self.index=})"
+        return f"Symbol({self.name=} {self.type_} {self.index=})"
 
 class Parser:
 
@@ -54,40 +55,58 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
-        tree = self.get_instruction()
+        tree = self.get_function()
         self.nb_var = 0
         self.sem_node(tree)
         return tree
     
-    def sem_node(self,node:Node):
-        match node.node_type:
+    def sem_nodes_children(self,node:Node):
+        for child in node.children:
+            self.sem_node(child)
 
-            
+    def sem_node(self,node:Node):
+
+        match node.node_type:
             case "nd_block":
                 self.begin()
-                for child in node.children:
-                    self.sem_node(child)
+                self.sem_nodes_children(node)
                 self.end()
             
             case "nd_decl":
                 s = self.declare(node.node_string)
                 s.index = self.nb_var
+                node.index = s.index
                 self.nb_var+=1
             
             case "nd_ref":
                 s = self.find(node.node_string)
-                assert s.index!=-1
+                if (s.type_ != "func"):
+                    assert s.index!=-1
                 node.index = s.index
             
             case "nd_affect":
                 if node.children[0].node_type != "nd_ref":
                     raise ValueError(f"Waiting identifier at {node.node_pos} before affectation")
-                for child in node.children:
-                    self.sem_node(child)
+                self.sem_nodes_children(node)
+
+            case "nd_call":
+                self.sem_nodes_children(node)
+                func_node = node.children[0]
+                if (func_node.node_type != "nd_ref" or self.find(func_node.node_string).type_ != "func"):
+                    raise ValueError(f"Can't call ({node.node_type} {node.node_string}) as a func")
+
+            case "nd_func" :
+                self.declare(node.node_string,sym_type="func")
+                
+                self.nb_var = 0
+                self.begin()
+                self.sem_nodes_children(node)
+                self.end()
+                node.node_value = self.nb_var
 
             case default:
-                for child in node.children:
-                    self.sem_node(child)
+                self.sem_nodes_children(node)
+
     
     def begin(self):
         if self.sym_indices_table == []:
@@ -96,10 +115,12 @@ class Parser:
             self.sym_indices_table.append(self.sym_indices_table[-1])
     
     def end(self):
-        new_end = self.sym_indices_table.pop()
-        self.sym_table = self.sym_table[:new_end]
+        previous_end = self.sym_indices_table.pop()
+        if self.sym_indices_table != []:
+            new_end = self.sym_indices_table[-1]
+            self.sym_table = self.sym_table[:new_end]
     
-    def declare(self,name:str):
+    def declare(self,name:str,sym_type = "int"):
         assert type(name)==str, "L'argument name n'a pas le type attendu (String)."
         if len(self.sym_indices_table) == 0:
             raise ValueError(f"Not in a scope at pos{self.lexer.current_token.token_pos}")
@@ -114,7 +135,7 @@ class Parser:
             if self.sym_table[i].name == name:
                 raise ValueError(f"Name {name} at pos {self.lexer.current_token.token_pos} already declared in current scope")
         
-        new_symbol = Symbol(name)
+        new_symbol = Symbol(name,sym_type)
         self.sym_table.append(new_symbol)
         self.sym_indices_table[-1]+=1
         return new_symbol
@@ -127,6 +148,34 @@ class Parser:
                 return self.sym_table[i]
         raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
     
+    def get_function(self) -> Node:
+
+        self.lexer.accept("tok_int")
+        self.lexer.accept("tok_ident")
+        identifier_tok = self.lexer.last_token
+        self.lexer.accept("tok_(")
+
+        function_node = Node("nd_func",node_pos=identifier_tok.token_pos,node_string=identifier_tok.token_string)
+
+        if not self.lexer.check("tok_)"):
+            while True: # Do
+
+                self.lexer.accept("tok_int")
+                self.lexer.accept("tok_ident")
+                arg_tok = self.lexer.last_token
+                function_node.children.append(Node("nd_decl",node_pos=arg_tok.token_pos,node_string=arg_tok.token_string))
+
+                if not self.lexer.check("tok_,"): # while
+                    break
+            self.lexer.accept("tok_)")
+        function_body = self.get_instruction()
+
+        assert function_body.node_type == "nd_block", f"Must have a block, got {function_body.node_type}"
+
+        function_node.children.append(function_body)
+
+        return function_node
+
     def get_instruction(self) -> Node:
 
         if self.lexer.check("tok_debug"):
@@ -244,6 +293,12 @@ class Parser:
 
             return global_seq_node
 
+        if self.lexer.check("tok_return"):
+            pos = self.lexer.last_token.token_pos
+            expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_return",node_pos = pos,node_children=[expression])
+
         else:
             intern_expression = self.get_expression()
             self.lexer.accept("tok_;")
@@ -278,7 +333,24 @@ class Parser:
         Sortie : Node
         """
 
-        return self.get_atom()
+        atom = self.get_atom()
+
+        if self.lexer.check("tok_("):
+            call_node = Node("nd_call",node_pos=atom.node_pos,node_children=[atom])
+
+            if not self.lexer.check("tok_)"):
+                while True: #do
+                    call_node.children.append(self.get_expression())
+                    if not self.lexer.check("tok_,"):
+                        break
+                self.lexer.accept("tok_)")
+            
+            return call_node
+        
+        else:
+            return atom
+
+
 
     def get_prefix(self) -> Node:
         """ 

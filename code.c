@@ -1,10 +1,16 @@
-{
-    int i;
-    int j;
-    for (i=0; i<5; i=i+1){
-        for (j=0;j<i;j=j+1) {
-            debug j;
-        }
-    }
+int a(int j){
+    return j+4;
+}
 
+int b(int i,int j){
+    return i+j;
+}
+
+int main() {
+    int i;
+    
+    i = 12;
+    debug a(i);
+    debug b(i,13);
+    return 0;
 }

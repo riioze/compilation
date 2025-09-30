@@ -196,3 +196,90 @@ case nd_loop
 
 case nd_break
     print("jump l", ll,"b)
+
+
+functions:
+
+F <- ('int'|'void') ident '(' args ')' I
+
+
+func ( decl... I )
+
+F() {
+    accept(tok_int);
+    accept(tok_ident);
+    accept(tok_();
+    if (!check("tok_)")){
+        do {
+            accept(tok_int);
+            accept(tok_indent);
+        } while(check(tok_,));
+        accept("tok_)");
+    }
+    I();    
+}
+
+return :
+
+I <- ....
+    | return E;
+
+return ( E )
+
+calls:
+
+S <- A ('(' args ')')?
+
+S() {
+    N = A();
+    if (check("tok_(")) {
+        N = Node(nd_call,N)
+        boucle sur les args
+    }
+    return N;
+}
+
+gencode de ret: (dans NF)
+
+E
+ret 
+
+gencode de func:
+
+.ident
+resn nbvar
+I
+push 0
+ret
+
+gencode pour call
+
+prep enfants[0].ident
+E1,
+E2
+.
+.
+.
+En
+call nbenfant-1
+
+analyse sem de
+
+AnaSem
+    NdAppel
+    appel recursif sur les enfants
+    if (enfant[0].type != var || Find(enfants[0].ident).type != function)
+        arreur fatale
+    ndFunc
+    Declare(N.ident)
+    nbvar = 0
+    debutbloc
+    boucle sur les enfants
+    finblock
+
+code de démarage
+
+.start
+prep main
+call 0
+halt
