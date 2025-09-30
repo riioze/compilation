@@ -316,10 +316,10 @@ class Lexer:
             line, col = self.current_token.token_pos
             raise ValueError(f"wrong token at pos ({line = } {col = }) expected a token of type {token_type}")
 
-    def check(self,token_type:str):
+    def check(self, token_type:str):
         """
         Vérification du type du current_token par rapport au type fourni en argument.
-        Si le type est le bon, appel à next_token() pour trouver la token d'avant,
+        Si le type est le bon, appel à next_token() pour trouver le token d'avant,
         renvoi de 'True'
         Si le type du current_token n'est pas le bon, 'False' est renvoyé
 
