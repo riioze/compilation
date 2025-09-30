@@ -46,7 +46,7 @@ class Parser:
         self.nb_var = 0
         
     
-    def next_tree(self):
+    def next_tree(self) -> Node:
         """ 
         Méthode renvoyant un noeud représentant la prochaine expression
 
@@ -59,92 +59,191 @@ class Parser:
         self.sem_node(tree)
         return tree
     
-    def sem_node(self,node:Node):
+    def sem_node(self,node:Node) -> None:
+        """
+        Analyse sémantique d'un noeud et de ses enfants
+
+        @params:
+        Entrée : node, type Node, Noeud dont l'analyse sémantique est faite
+        Sortie : None 
+        """
+
+        # Vérification du type de noeud, la suite de l'analyse en dépend
         match node.node_type:
 
-            
+            # Type "noeud bloc"
             case "nd_block":
+                # Appel à la méthode gérant le commencement d'un nouveau bloc
                 self.begin()
+
+                # Analyse des noeuds contenus dans le bloc
                 for child in node.children:
                     self.sem_node(child)
+
+                # Appel à la méthode gérant la fin d'un nouveau bloc
                 self.end()
             
+            # Type "noeud déclaration"
             case "nd_decl":
+                # Déclaration d'une variable 
                 s = self.declare(node.node_string)
+
+                # Sauvegarde de son indice dans la pile globale
                 s.index = self.nb_var
+
+                # Augmentation du nombre de variable
                 self.nb_var+=1
             
+            # Type "noeud référence"
             case "nd_ref":
                 s = self.find(node.node_string)
                 assert s.index!=-1
                 node.index = s.index
             
+            # Type "noeud affection"
             case "nd_affect":
                 if node.children[0].node_type != "nd_ref":
                     raise ValueError(f"Waiting identifier at {node.node_pos} before affectation")
                 for child in node.children:
                     self.sem_node(child)
 
+            # Cas par défaut, dans le cas d'un noeud loop par exemple
             case default:
                 for child in node.children:
                     self.sem_node(child)
     
-    def begin(self):
+    def begin(self) -> None:
+        """
+        Méthode démarrant un contexte quant une '{' est rencontrée
+        La table des indices permet de savoir où commence chaque bloc pour délmiter dans la pile de symbole
+        quel symbole est dans quel scope
+
+        @params:
+        Entrée : None
+        Sortie : None
+        """
+
+        # Si la table des indices est vide, on ajoute 0 (indice de la fin du scope)
         if self.sym_indices_table == []:
             self.sym_indices_table.append(0)
         else:
+            # Si la table des indices des symboles contient quelque chose, duplication de ce nombre
+            # pour pouvoir l'augmenter sans le modifier (définition de la fin du scope)
             self.sym_indices_table.append(self.sym_indices_table[-1])
     
-    def end(self):
+    def end(self) -> None:
+        """
+        Méthode rencontrée à la fin d'un bloc d'instruction pour en sortir
+
+        @params:
+        Entrée : None
+        Sortie : None
+        """
+
+        # Sortie du scope, récupération et suppression de l'indice de la fin de ce dernier
         new_end = self.sym_indices_table.pop()
+        
+        # Redéfinition de la table des symboles pour enlever les symboles du contexte qui se termine
+        # TODO : VERIFIER CETTE LIGNE
         self.sym_table = self.sym_table[:new_end]
     
-    def declare(self,name:str):
+    def declare(self,name:str) -> Symbol:
+        """
+        Déclarition d'une variable
+
+        @params:
+        Entrée : name, type String, nom de la variable
+        Sortie : new_symbol, type Symbol, symbole de la variable
+        """
         assert type(name)==str, "L'argument name n'a pas le type attendu (String)."
+        
+        # Si la table des indices des symboles est vide, il y a une erreur
         if len(self.sym_indices_table) == 0:
             raise ValueError(f"Not in a scope at pos{self.lexer.current_token.token_pos}")
+        
+        # -----
+
+        # Récupération / Définition des bottom et top pour parcourir la table des symboles du contexte actuel
+        # pour vérifier que le nom de la variable qui est définie n'est pas en conflit avec un autre nom (déjà pris)
+
+        # --
+
+        # Dans le cas du contexte général, il n'y a que l'indice de fin dans la liste, attribution du bottom à 0
         elif len(self.sym_indices_table) == 1:
             bottom = 0
+            # Récupération de l'indice du haut du contexte
             top = self.sym_indices_table[0]
+        
+        # Dans le cas d'un contexte aléatoire dans un code, récupération du bottom et du top
         else:
             bottom = self.sym_indices_table[-2]
             top = self.sym_indices_table[-1]
         
+        # Regarde dans le contexte courant si on a déjà une variable avec ce nom
         for i in range(bottom,top):
+            # Cas problématique
             if self.sym_table[i].name == name:
+                # Renvoi d'erreur
                 raise ValueError(f"Name {name} at pos {self.lexer.current_token.token_pos} already declared in current scope")
         
+        # Création d'un nouveau symbole
         new_symbol = Symbol(name)
+
+        # Ajout dans la table des symboles
         self.sym_table.append(new_symbol)
+
+        # Augmentation de 1 la fin de la pile des indices des symboles
         self.sym_indices_table[-1]+=1
+
+        # Renvoi du symbole tout juste créé représentant la variable
         return new_symbol
     
-    def find(self,name:str):
+    
+    def find(self,name:str) -> Symbol:
+        """
+        Méthode renvoyant le symbole recherché s'il est trouvé dans la table des symboles
+
+        @params
+        Entrée : name, type String, le nom du symbole à trouver 
+        Sortie : self.sym_table[i], type Symbol, le symbole recherché s'il est trouvé
+        """
+
         assert type(name)==str, "L'argument name n'a pas le type attendu (String)."
+
         top = self.sym_indices_table[-1]-1
         for i in range(top,-1,-1):
             if self.sym_table[i].name == name:
                 return self.sym_table[i]
+            
         raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
     
     def get_instruction(self) -> Node:
+        """
+        Méthode permettant de récupérer
+
+        @params:
+        Entrée : 
+        Sortie :
+        """
 
         if self.lexer.check("tok_debug"):
             intern_expression = self.get_expression()
             self.lexer.accept("tok_;")
             return Node("nd_debug",node_pos=intern_expression.node_pos,node_children=[intern_expression])
+        
         elif self.lexer.check("tok_{"):
             block = Node("nd_block",node_pos=self.lexer.last_token.token_pos)
             while(not self.lexer.check("tok_}")):
                 block.children.append(self.get_instruction())
             return block
+        
         elif self.lexer.check("tok_int"):
             token = self.lexer.current_token
             self.lexer.accept("tok_ident")
             self.lexer.accept("tok_;")
             return Node("nd_decl",token.token_pos,node_string=token.token_string)
+        
         elif self.lexer.check("tok_if"):
-            
             if_token = self.lexer.last_token
             self.lexer.accept("tok_(")
             condition_expression = self.get_expression()
