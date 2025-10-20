@@ -22,8 +22,7 @@ def check_op_prio(token_type : str,prio : int) -> bool:
     return token_type in OP.keys() and OP[token_type]["prio"] >= prio
 
 class Symbol:
-
-    def __init__(self, name:str):
+    def __init__(self, name:str,sym_type="int"):
         """
         Initialisation d'un objet de la classe Symbol
 
@@ -33,6 +32,7 @@ class Symbol:
         """
         self.name = name
         self.index = -1
+        self.type_ = sym_type
     
     def __repr__(self):
         """
@@ -42,7 +42,7 @@ class Symbol:
         Entrée : None
         Sortie : None
         """
-        return f"Symbol({self.name=} {self.index=})"
+        return f"Symbol({self.name=} {self.type_} {self.index=})"
 
 class Parser:
 
@@ -69,14 +69,21 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
-        tree = self.get_instruction()
+        tree = self.get_function()
         self.nb_var = 0
 
         # Analyse sémantique du noeud
         self.sem_node(tree)
         return tree
     
-    def sem_node(self,node:Node) -> None:
+
+
+            # Type "noeud bloc"
+    def sem_nodes_children(self,node:Node):
+        for child in node.children:
+            self.sem_node(child)
+
+    def sem_node(self,node:Node):
         """
         Analyse sémantique d'un noeud et de ses enfants
 
@@ -85,19 +92,11 @@ class Parser:
         Sortie : None 
         """
 
-        # Vérification du type de noeud, la suite de l'analyse en dépend
         match node.node_type:
-
-            # Type "noeud bloc"
             case "nd_block":
                 # Appel à la méthode gérant le commencement d'un nouveau bloc
                 self.begin()
-
-                # Analyse des noeuds contenus dans le bloc
-                for child in node.children:
-                    self.sem_node(child)
-
-                # Appel à la méthode gérant la fin d'un nouveau bloc
+                self.sem_nodes_children(node)
                 self.end()
             
             # Type "noeud déclaration"
@@ -109,36 +108,42 @@ class Parser:
                 s.index = self.nb_var
 
                 # Augmentation du nombre de variable
+                node.index = s.index
                 self.nb_var+=1
             
             # Type "noeud référence"
             case "nd_ref":
                 # Récupération du symbole s'il existe dans la table des symboles
                 s = self.find(node.node_string)
-
-                # Vérification de son index
-                assert s.index!=-1
-
-                # Attribution de l'index du symbole au noeud référence
+                if (s.type_ != "func"):
+                    assert s.index!=-1
                 node.index = s.index
             
             # Type "noeud affectation"
             case "nd_affect":
-
-                # Vérification de la bonne présence d'un noeud référence dans les enfants
-                # -> Impossible d'affecter une valeur à autre chose qu'une référence
-                if node.children[0].node_type != "nd_ref":
+                if node.children[0].node_type not in ["nd_ref","nd_ind"]:
                     raise ValueError(f"Waiting identifier at {node.node_pos} before affectation")
+                self.sem_nodes_children(node)
+
+            case "nd_call":
+                self.sem_nodes_children(node)
+                func_node = node.children[0]
+                if (func_node.node_type != "nd_ref" or self.find(func_node.node_string).type_ != "func"):
+                    raise ValueError(f"Can't call ({node.node_type} {node.node_string}) as a func")
+
+            case "nd_func" :
+                self.declare(node.node_string,sym_type="func")
                 
-                # Analyse sémantique de chaque enfant
-                for child in node.children:
-                    self.sem_node(child)
+                self.nb_var = 0
+                self.begin()
+                self.sem_nodes_children(node)
+                self.end()
+                node.node_value = self.nb_var
 
             # Cas par défaut, dans le cas d'un noeud loop par exemple
             case default:
-                # Analyse de chaque enfant
-                for child in node.children:
-                    self.sem_node(child)
+                self.sem_nodes_children(node)
+
     
     def begin(self) -> None:
         """
@@ -214,10 +219,7 @@ class Parser:
                 # Renvoi d'erreur
                 raise ValueError(f"Name {name} at pos {self.lexer.current_token.token_pos} already declared in current scope")
         
-        # Création d'un nouveau symbole
-        new_symbol = Symbol(name)
-
-        # Ajout dans la table des symboles
+        new_symbol = Symbol(name,sym_type)
         self.sym_table.append(new_symbol)
 
         # Augmentation de 1 la fin de la pile des indices des symboles
@@ -245,6 +247,35 @@ class Parser:
         # Renvoi d'une erreur si le nom n'est pas trouvé dans la table des symboles
         raise ValueError(f"Name {name} at {self.lexer.current_token.token_pos} not declared in current or bigger scope.")
     
+    def get_function(self) -> Node:
+
+        self.lexer.accept("tok_int")
+        while self.lexer.check("tok_*"):pass # retire les * "inutiles"
+        self.lexer.accept("tok_ident")
+        identifier_tok = self.lexer.last_token
+        self.lexer.accept("tok_(")
+
+        function_node = Node("nd_func",node_pos=identifier_tok.token_pos,node_string=identifier_tok.token_string)
+
+        if not self.lexer.check("tok_)"):
+            while True: # Do
+
+                self.lexer.accept("tok_int")
+                self.lexer.accept("tok_ident")
+                arg_tok = self.lexer.last_token
+                function_node.children.append(Node("nd_decl",node_pos=arg_tok.token_pos,node_string=arg_tok.token_string))
+
+                if not self.lexer.check("tok_,"): # while
+                    break
+            self.lexer.accept("tok_)")
+        function_body = self.get_instruction()
+
+        assert function_body.node_type == "nd_block", f"Must have a block, got {function_body.node_type}"
+
+        function_node.children.append(function_body)
+
+        return function_node
+
     def get_instruction(self) -> Node:
         """
         Méthode permettant de récupérer une instruction complète
@@ -287,6 +318,10 @@ class Parser:
             return block
         
         elif self.lexer.check("tok_int"):
+            
+
+            while(self.lexer.check("tok_*")):pass
+
             token = self.lexer.current_token
             self.lexer.accept("tok_ident")
             self.lexer.accept("tok_;")
@@ -415,6 +450,17 @@ class Parser:
             # Renvoi du noeud séquence
             return global_seq_node
 
+        if self.lexer.check("tok_return"):
+            pos = self.lexer.last_token.token_pos
+            expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_return",node_pos = pos,node_children=[expression])
+
+        if self.lexer.check("tok_send"):
+            intern_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_send",node_pos=self.lexer.last_token.token_pos,node_children=[intern_expression])
+
         else:
             # Dans le cas d'une transformation d'une expression en instruction 
             # (suppression de la valeur de l'expression du haut de la pile)
@@ -468,8 +514,25 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
+        print(self.lexer.last_token)
+        atom = self.get_atom()
 
-        return self.get_atom()
+        if self.lexer.check("tok_("):
+            call_node = Node("nd_call",node_pos=atom.node_pos,node_children=[atom])
+
+            if not self.lexer.check("tok_)"):
+                while True: #do
+                    call_node.children.append(self.get_expression())
+                    if not self.lexer.check("tok_,"):
+                        break
+                self.lexer.accept("tok_)")
+            
+            return call_node
+        
+        else:
+            return atom
+
+
 
     def get_prefix(self) -> Node:
         """ 
@@ -513,6 +576,12 @@ class Parser:
             # Préfix + inutile (comme dans "+5", suppression du "+" inutile)
             return self.get_prefix()
         
+        elif self.lexer.check("tok_*"):
+            return Node("nd_ind",node_pos=self.lexer.last_token.token_pos,node_children=[self.get_prefix()])
+        
+        elif self.lexer.check("tok_&"):
+            return Node("nd_adr",node_pos=self.lexer.last_token.token_pos,node_children=[self.get_prefix()])
+
         else:
             # Lorsqu'on rencontre quelque chose de différent des préfixes définis, renvoi en tant que suffixe
             return self.get_suffix()
@@ -552,6 +621,10 @@ class Parser:
 
             return Node("nd_ref",node_pos=token.token_pos,node_string=token.token_string)
         
+        elif self.lexer.check("tok_recv"):
+
+            return Node("nd_recv",node_pos=self.lexer.last_token.token_pos)
+
         else:
             # Token non accepté dans la grammaire régissant ce modèle atome, renvoi d'une erreur
             raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const or expression")

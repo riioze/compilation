@@ -25,6 +25,11 @@ NF = {
     "nd_drop" : {"prefix" : "", "suffix" : "drop 1"},
     "nd_block" : {"prefix" : "", "suffix" : ""},
     "nd_seq" : {"prefix" : "", "suffix" : ""},
+    "nd_return" : {"prefix": "", "suffix":"ret"},
+    "nd_ind" : {"prefix":"", "suffix":"read"},
+
+    "nd_recv" : {"prefix":"","suffix":"recv"},
+    "nd_send" : {"prefix":"","suffix":"send"},
 }
 
 
@@ -35,9 +40,7 @@ l_label = 0
 def gencode(optimizer:Optimizer,file):
     
     tree = optimizer.next_tree()
-    print(f"resn {optimizer.parser.nb_var}",file=file)
     gennode(tree,file)
-    print(f"drop {optimizer.parser.nb_var}",file=file)
 
 def gennode(node:Node,file):
 
@@ -67,8 +70,12 @@ def gennode(node:Node,file):
             gennode(node.children[1],file)
             print("dup",file=file)
             identifier = node.children[0]
-            assert identifier.index >= 0, f"index not set {str(identifier)}"
-            print(f"set {identifier.index}",file=file)
+            if identifier.node_type == "nd_ind":
+                gennode(identifier.children[0],file=file)
+                print("write",file=file)
+            else:
+                assert identifier.index >= 0, f"index not set {str(identifier)}"
+                print(f"set {identifier.index}",file=file)
         
         case "nd_cond":
             gennode(node.children[0],file=file)
@@ -100,6 +107,34 @@ def gennode(node:Node,file):
         
         case "nd_target":
             print(f".l{l_label}c",file=file)
+
+        case "nd_func":
+        
+            print(f".{node.node_string}",file=file)
+            print(f"resn {node.node_value}",file=file)
+
+            instruction = node.children[-1]
+            gennode(instruction,file=file)
+
+            print("push 0",file=file)
+            print("ret",file=file)
+        
+        case "nd_call":
+
+            print(f"prep {node.children[0].node_string}",file=file)
+            for child in node.children[1:]:
+                gennode(child,file=file)
+            print(f"call {len(node.children)-1}",file=file)
+
+        case "nd_adr":
+            print("prep start",file=file)
+            print("swap",file=file)
+            print("drop 1",file=file)
+            print("push 1",file=file)
+            print("sub",file=file)
+            print(f"push {node.children[0].index}",file=file)
+            print("sub",file=file)
+
 
         
         case other:

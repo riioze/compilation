@@ -196,3 +196,191 @@ case nd_loop
 
 case nd_break
     print("jump l", ll,"b)
+
+
+functions:
+
+F <- ('int'|'void') ident '(' args ')' I
+
+
+func ( decl... I )
+
+F() {
+    accept(tok_int);
+    accept(tok_ident);
+    accept(tok_();
+    if (!check("tok_)")){
+        do {
+            accept(tok_int);
+            accept(tok_ident);
+        } while(check(tok_,));
+        accept("tok_)");
+    }
+    I();    
+}
+
+return :
+
+I <- ....
+    | return E;
+
+return ( E )
+
+calls:
+
+S <- A ('(' args ')')?
+
+S() {
+    N = A();
+    if (check("tok_(")) {
+        N = Node(nd_call,N)
+        boucle sur les args
+    }
+    return N;
+}
+
+gencode de ret: (dans NF)
+
+E
+ret 
+
+gencode de func:
+
+.ident
+resn nbvar
+I
+push 0
+ret
+
+gencode pour call
+
+prep enfants[0].ident
+E1,
+E2
+.
+.
+.
+En
+call nbenfant-1
+
+analyse sem de
+
+AnaSem
+    NdAppel
+    appel recursif sur les enfants
+    if (enfant[0].type != var || Find(enfants[0].ident).type != function)
+        arreur fatale
+    ndFunc
+    Declare(N.ident)
+    nbvar = 0
+    debutbloc
+    boucle sur les enfants
+    finblock
+
+code de démarage
+
+.start
+prep main
+call 0
+halt
+
+
+Pointeurs
+I <- int '*'* ident
+
+
+elif check(tok_int):
+    while(check(tok_*)) : pass
+    accept(tok_ident)
+
+P <- -P | !P | +P | *P | &P | S
+
+*P -> ind ( P )
+
+*p = 5 -> affect ( ind ( P ) 5)
+a = *p -> ..
+
+&P -> adr ( P )
+
+gen_code des pointeurs
+
+ind ( E ) :
+
+E
+read
+
+affect ( ... E )
+
+if N.enfants[0].type == nd_ref:
+    ...
+elif N.enfants[0].type == nd_ind:
+    gen_node(N.enfants[1])
+    print(dup)
+    gen_node(N.enfants[0].enfants[0])
+    print(write)
+
+malloc et free: a ajouter dans le code.c direct
+
+void free(int *p) {} ici free faire rien
+
+int *malloc(int n){
+    int *p;
+    p=*0;
+    *0 = *0+n;
+    return p;
+}
+
+gen_code de &P 
+
+adr ( ref )
+
+prep start
+swap
+drop 1
+push 1
+sub
+push {N.enfants[0].index}
+sub
+
+
+test :
+swap (int *a, int *b){
+    int t;
+    t = *a;
+    *a = *b;
+    *b = t;
+}
+
+tableaux:
+
+A <- ...
+     | A '[' E ']'
+
+ind ( + ( A E ) )
+
+ajout de send et receive
+
+A < ..... | recv
+
+gen_code : recv
+
+I <- send E ;
+
+send ( E )
+
+gen_code : 
+E
+send
+
+void print(int n) {
+    int d; d = n%10;
+    int r; r = n/10;
+    if (r!0) print(r);
+    send 48+d;
+}
+
+void println(int v){
+    print(v);
+    send 10;
+}
+

@@ -22,8 +22,8 @@ class Node:
         else:
             assert node_value==None, "L'argument node_value n'est pas censé avoir de valeur en dehors d'un node_type == nd_const."
 
-        if (node_type == "nd_ref" or node_type == "nd_decl"):
-            assert node_string!=None, "L'argument node_string doit avoir une valeur quand node_type == nd_ref ou nd_decl."
+        if (node_type in ["nd_ref","nd_decl","nd_func"]):
+            assert node_string!=None, "L'argument node_string doit avoir une valeur quand node_type == nd_ref, nd_func ou nd_decl."
         else:
             assert node_string==None, f"L'argument node_string n'est pas censé avoir de valeur en dehors d'un node_type == nd_ref ou nd_decl, ici c'est {node_type}."
 
