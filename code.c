@@ -1,10 +1,3 @@
-int *malloc(int n){
-    int *p;
-    p=*0;
-    *0 = *0+n;
-    return p;
-}
-
 int main() {
     
     int i;
@@ -21,6 +14,12 @@ int main() {
     }
 
     debug *p;
+
+    i = recv;
+
+    send i+1;
+
+    send 10;
 
     return 0;
 }

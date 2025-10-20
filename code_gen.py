@@ -27,6 +27,9 @@ NF = {
     "nd_seq" : {"prefix" : "", "suffix" : ""},
     "nd_return" : {"prefix": "", "suffix":"ret"},
     "nd_ind" : {"prefix":"", "suffix":"read"},
+
+    "nd_recv" : {"prefix":"","suffix":"recv"},
+    "nd_send" : {"prefix":"","suffix":"send"},
 }
 
 

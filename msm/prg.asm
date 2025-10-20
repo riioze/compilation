@@ -65,6 +65,16 @@ jump l1a
 get 1
 read
 dbg
+recv
+dup
+set 0
+drop 1
+get 0
+push 1
+add
+send
+push 10
+send
 push 0
 ret
 

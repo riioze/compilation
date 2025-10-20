@@ -305,6 +305,11 @@ class Parser:
             self.lexer.accept("tok_;")
             return Node("nd_return",node_pos = pos,node_children=[expression])
 
+        if self.lexer.check("tok_send"):
+            intern_expression = self.get_expression()
+            self.lexer.accept("tok_;")
+            return Node("nd_send",node_pos=self.lexer.last_token.token_pos,node_children=[intern_expression])
+
         else:
             intern_expression = self.get_expression()
             self.lexer.accept("tok_;")
@@ -338,7 +343,7 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
-
+        print(self.lexer.last_token)
         atom = self.get_atom()
 
         if self.lexer.check("tok_("):
@@ -445,7 +450,10 @@ class Parser:
 
             return Node("nd_ref",node_pos=token.token_pos,node_string=token.token_string)
         
-        
+        elif self.lexer.check("tok_recv"):
+
+            return Node("nd_recv",node_pos=self.lexer.last_token.token_pos)
+
         else:
             # Token non accepté dans la grammaire régissant ce modèle atome, renvoi d'une erreur
             raise ValueError(f"error at pos {self.lexer.current_token.token_pos}, expected const or expression")
