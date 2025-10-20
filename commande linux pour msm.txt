@@ -13,4 +13,4 @@ gcc -o msm msm.c
 Lancer le programme : 
 
 cat prg.asm | ./msm.exe -d -d
-./msm prg.asm
+./msm_mac prg.asm
