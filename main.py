@@ -6,37 +6,41 @@ from lexer import *
 from parser import *
 from optimizer import *
 from code_gen import *
+from pathlib import Path
+from sys import stdin,stdout
 
 def main():
     code = ""
 
-    files = [
-        "std.c",
-        "code.c"
+    files_paths = [
+        Path("std.c")
     ]
 
-    for file in files:
+    for file in files_paths:
         with open(file,'r') as f:
             code+=f.read()+'\n'
     
+    in_file = stdin
+    code += in_file.read()
+
     lexer = Lexer(code)
     lexer.next_token()
     parser = Parser(lexer)
     optimizer = Optimizer(parser)
 
-    with open("msm/prg.asm",'w') as file:
+    out_file = stdout
 
-        parser.begin()
+    parser.begin()
 
-        while(lexer.current_token.token_type != "tok_eof"):
-            gencode(optimizer,file=file)
+    while(lexer.current_token.token_type != "tok_eof"):
+        gencode(optimizer,file=out_file)
 
-        parser.end()
+    parser.end()
 
-        print(".start",file=file)
-        print("prep main",file=file)
-        print("call 0",file=file)
-        print("halt",file=file)
+    print(".start",file=out_file)
+    print("prep main",file=out_file)
+    print("call 0",file=out_file)
+    print("halt",file=out_file)
 
         
 
