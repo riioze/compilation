@@ -8,8 +8,16 @@ from optimizer import *
 from code_gen import *
 
 def main():
-    with open("code.c", 'r') as f:
-        code = f.read()
+    code = ""
+
+    files = [
+        "std.c",
+        "code.c"
+    ]
+
+    for file in files:
+        with open(file,'r') as f:
+            code+=f.read()+'\n'
     
     lexer = Lexer(code)
     lexer.next_token()

@@ -314,7 +314,7 @@ class Lexer:
 
         if not self.check(token_type):
             line, col = self.current_token.token_pos
-            raise ValueError(f"wrong token at pos ({line = } {col = }) expected a token of type {token_type}")
+            raise ValueError(f"wrong token at pos ({line = } {col = }) expected a token of type {token_type}, got {self.current_token}")
 
     def check(self, token_type:str):
         """

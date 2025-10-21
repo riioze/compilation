@@ -174,13 +174,13 @@ class Parser:
         """
 
         # Sortie du scope, récupération et suppression de l'indice de la fin de ce dernier
-        new_end = self.sym_indices_table.pop()
-        
+        self.sym_indices_table.pop()
+        new_end = self.sym_indices_table[-1] if self.sym_indices_table else 0
         # Redéfinition de la table des symboles pour enlever les symboles du contexte qui se termine
         # TODO : VERIFIER CETTE LIGNE
         self.sym_table = self.sym_table[:new_end]
     
-    def declare(self, name:str) -> Symbol:
+    def declare(self, name:str, sym_type:str=None) -> Symbol:
         """
         Déclarition d'une variable
 
@@ -261,6 +261,7 @@ class Parser:
             while True: # Do
 
                 self.lexer.accept("tok_int")
+                while self.lexer.check("tok_*"):pass
                 self.lexer.accept("tok_ident")
                 arg_tok = self.lexer.last_token
                 function_node.children.append(Node("nd_decl",node_pos=arg_tok.token_pos,node_string=arg_tok.token_string))
@@ -514,7 +515,6 @@ class Parser:
         Entrée : None
         Sortie : Node
         """
-        print(self.lexer.last_token)
         atom = self.get_atom()
 
         if self.lexer.check("tok_("):

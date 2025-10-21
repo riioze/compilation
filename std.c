@@ -21,7 +21,8 @@ int print(int n){
 }
 
 int println(int n) {
-    int nl = print(n);
+    int nl;
+    nl = print(n);
     send 10;
     return nl; 
 }

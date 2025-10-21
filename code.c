@@ -11,7 +11,7 @@ int main() {
         *(p+x) = 3;
     }
 
-    print(*p);
+    println(*p);
 
     return 0;
 }
