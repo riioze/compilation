@@ -8,10 +8,12 @@ int main() {
 
     int x;
     for (x = 0;x<5;x=x+1){
-        *(p+x) = 3;
+        p[x] = x;
     }
 
-    println(*p);
+    for (x=0; x<5; x = x+1){
+        println(p[x]);
+    }
 
     return 0;
 }

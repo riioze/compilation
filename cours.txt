@@ -228,7 +228,7 @@ return ( E )
 
 calls:
 
-S <- A ('(' args ')')?
+S <- A ('(' args ? ')')
 
 S() {
     N = A();
@@ -353,7 +353,7 @@ swap (int *a, int *b){
 
 tableaux:
 
-A <- ...
+S <- ...
      | A '[' E ']'
 
 ind ( + ( A E ) )

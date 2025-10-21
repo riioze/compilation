@@ -529,6 +529,14 @@ class Parser:
             
             return call_node
         
+        elif self.lexer.check("tok_["):
+            expression = self.get_expression()
+            self.lexer.accept('tok_]')
+
+            addition = Node("nd_plus", node_pos = expression.node_pos,node_children=[atom,expression])
+
+            return Node("nd_ind",node_pos=addition.node_pos,node_children=[addition])
+
         else:
             return atom
 
