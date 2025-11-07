@@ -26,3 +26,7 @@ def test_fibo_rec():
 def test_nested_different_loops():
     with open(test_codes/"test_nested_different_loops.c", 'r') as f:
         checking_function(f,b"0\n1\n0\n2\n1\n0\n3\n2\n1\n0\n4\n3\n2\n1\n0\n")
+
+def test_base_tabs():
+    with open(test_codes/"test_base_tabs.c",'r') as f:
+        checking_function(f,b"4\n3\n2\n1\n0\n")
