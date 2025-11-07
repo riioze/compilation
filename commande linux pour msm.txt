@@ -14,3 +14,7 @@ Lancer le programme :
 
 cat prg.asm | ./msm.exe -d -d
 ./msm_mac prg.asm
+
+ou : 
+
+cat code.c | python3 main.py | ./msm/msm

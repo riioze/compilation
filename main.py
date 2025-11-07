@@ -9,7 +9,10 @@ from code_gen import *
 from pathlib import Path
 from sys import stdin,stdout
 
-def main():
+
+def load_code_from_file(in_file) -> str:
+
+
     code = ""
 
     files_paths = [
@@ -20,15 +23,16 @@ def main():
         with open(file,'r') as f:
             code+=f.read()+'\n'
     
-    in_file = stdin
     code += in_file.read()
 
-    lexer = Lexer(code)
+    return code
+
+def compile_asm_in_file(in_code,out_file) -> None:
+
+    lexer = Lexer(in_code)
     lexer.next_token()
     parser = Parser(lexer)
     optimizer = Optimizer(parser)
-
-    out_file = stdout
 
     parser.begin()
 
@@ -41,6 +45,12 @@ def main():
     print("prep main",file=out_file)
     print("call 0",file=out_file)
     print("halt",file=out_file)
+
+def main():
+
+    in_code = load_code_from_file(stdin)
+    compile_asm_in_file(in_code,stdout)
+
 
         
 
