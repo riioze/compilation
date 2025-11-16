@@ -38,3 +38,8 @@ def test_contexts():
 def test_fibo_divide_conquer():
     with open(test_codes/"test_fibo_divide_conquer.c",'r') as f:
         checking_function(f,b"610\n")
+
+
+def test_conditions():
+    with open(test_codes/"test_conditions.c",'r') as f:
+        checking_function(f,b"0\n2\n4\n")
