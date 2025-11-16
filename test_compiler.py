@@ -35,8 +35,8 @@ def test_contexts():
     with open(test_codes/"test_contexts.c",'r') as f:
         checking_function(f,b"2\n1\n0\n")
 
-def test_fibo_divide_conquer():
-    with open(test_codes/"test_fibo_divide_conquer.c",'r') as f:
+def test_fibo_dyn():
+    with open(test_codes/"test_fibo_dyn.c",'r') as f:
         checking_function(f,b"610\n")
 
 

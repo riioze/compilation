@@ -1,18 +1,21 @@
 # Projet de compilation
 
+## pour compiler
 
-## fonctionnalitées implémentées
+le code est lu par l'entrée standard et l'eembleur est sorti par la sortie standard de [main.py](main.py).
 
-- déclaration de variables
-- language turing complet (boucle for while do...while + conditions)
-- fonctions
-- manipulation de pointeurs
-- malloc dans le tas et non la pile
-- écriture des tableaux avec des crochets
-- récursion
+Toutefois c'est possible de changer les fichier in et out dans la fonction ```main()``` cd [main.py](main.py)
 
-## Non implémentées
-- _ dans les noms de variable
-- déclaration et initialisation en une ligne (int i = 0)
-- opérateurs d'incrémentation et décrémentation (++, += ect)
-- commentaires
+## les test
+les fichier .c de test sont dans [tests](tests)
+
+Ici on a utilisé pytest pour lancer le fichier qui contient tous les tests [test_compiler.py](test_compiler.py)
+
+```sh
+pytest
+```
+
+## Le code
+### tokenizer->analyseur syntaxique
+
+le tokenizer et analyseur syntaxique se trouve dans [lexer.py](lexer.py) 

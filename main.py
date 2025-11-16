@@ -51,10 +51,6 @@ def main():
     in_code = load_code_from_file(stdin)
     compile_asm_in_file(in_code,stdout)
 
-
-        
-
-
 if __name__ == "__main__":
     
     main()
